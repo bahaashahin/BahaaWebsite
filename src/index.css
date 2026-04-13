@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ممكن تضيف هنا أي تعديل إضافي */
+body {
+  font-family: "Exo 2", "Tajawal", sans-serif;
+}
+
+.task-card {
+  border: 1px solid #ccc;
+  padding: 16px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  background-color: white;
+}
+
+.task-card.green {
+  background-color: #d4edda; /* أخضر فاتح */
+  border-color: #28a745;
+}
