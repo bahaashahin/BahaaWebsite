@@ -46,9 +46,10 @@ function Navbar() {
     navigate("/login");
   };
 
+  // 🔥 دعم الصفحات الديناميك زي /session/:id
   const linkClass = (path) =>
     `flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-      location.pathname === path
+      location.pathname.startsWith(path)
         ? "bg-blue-600 text-white"
         : "text-gray-300 hover:bg-white hover:text-[#05568d]"
     }`;
@@ -87,8 +88,12 @@ function Navbar() {
                 <FaTasks /> Tasks
               </Link>
 
+              {/* 🔥 COURSES (الجديدة) */}
               <Link to="/courses" className={linkClass("/courses")}>
-                <FaBook /> Sessions
+                <FaBook /> Courses
+                <span className="ml-auto bg-red-500 text-xs px-2 py-1 rounded-full">
+                  NEW
+                </span>
               </Link>
 
               {isAdmin && (
@@ -155,8 +160,9 @@ ${mobileOpen ? "translate-x-0" : "translate-x-full"}`}
                 Tasks
               </Link>
 
+              {/* 🔥 COURSES */}
               <Link onClick={() => setMobileOpen(false)} to="/courses">
-                Sessions
+                Courses
               </Link>
 
               {isAdmin && (

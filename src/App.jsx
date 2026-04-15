@@ -12,6 +12,9 @@ import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Quiz from "./pages/Quiz";
 import Courses from "./pages/Courses";
+import AdminSessions from "./pages/AdminSessions";
+import StudentSessions from "./pages/StudentSessions";
+import SessionDetails from "./pages/SessionDetails";
 import {
   BrowserRouter as Router,
   Route,
@@ -90,6 +93,22 @@ function App() {
               )
             }
           />
+          <Route
+            path="/courses"
+            element={
+              user ? (
+                role === "admin" ? (
+                  <AdminSessions />
+                ) : (
+                  <StudentSessions />
+                )
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+
+          <Route path="/session/:id" element={<SessionDetails />} />
 
           <Route
             path="/admin-points"
