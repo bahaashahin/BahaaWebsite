@@ -90,7 +90,7 @@ function Navbar() {
 
               {/* 🔥 COURSES (الجديدة) */}
               <Link to="/courses" className={linkClass("/courses")}>
-                <FaBook /> Courses
+                <FaBook /> Sessions
                 <span className="ml-auto bg-red-500 text-xs px-2 py-1 rounded-full">
                   NEW
                 </span>
@@ -162,7 +162,7 @@ ${mobileOpen ? "translate-x-0" : "translate-x-full"}`}
 
               {/* 🔥 COURSES */}
               <Link onClick={() => setMobileOpen(false)} to="/courses">
-                Courses
+                Sessions
               </Link>
 
               {isAdmin && (
