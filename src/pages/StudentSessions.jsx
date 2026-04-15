@@ -19,7 +19,7 @@ export default function StudentSessions() {
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white px-4 py-10">
       {/* ================= HEADER ================= */}
-      <h1 className="text-3xl font-bold text-center mb-10">
+      <h1 className="text-3xl font-bold text-center mb-10 pt-10">
         Sessions
       </h1>
 
