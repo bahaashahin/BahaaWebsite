@@ -4,7 +4,6 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import Testimonials from "../components/Testimonials";
 import heroImage from "../assets/bahaaa.png";
-import bgImage from "../assets/back.png";
 import logo1 from "../assets/css.svg";
 import logo2 from "../assets/js.svg";
 import logo3 from "../assets/bootstrap.svg";
@@ -22,11 +21,7 @@ export default function Home() {
   useEffect(() => {
     const auth = getAuth();
     onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setIsLoggedIn(true);
-      } else {
-        setIsLoggedIn(false);
-      }
+      setIsLoggedIn(!!user);
     });
   }, []);
 
@@ -45,140 +40,142 @@ export default function Home() {
     logo4,
     logo5,
     logo6,
-    logo7,
-    logo1,
-    logo2,
-    logo3,
-    logo4,
-    logo5,
-    logo6,
-    logo7,
   ];
 
   return (
-    <div
-      className="min-h-screen text-white relative overflow-hidden bg-cover bg-center"
-      style={{ backgroundImage: `url(${bgImage})` }}
-    >
-      <Navbar />
-      
-      {/* Decorative bubbles */}
-      <span className="absolute w-72 h-72 bg-white/10 rounded-full -top-20 -left-20 animate-pulse"></span>
-      <span className="absolute w-96 h-96 bg-white/10 rounded-full -bottom-32 -right-32 animate-pulse"></span>
+    <div className="min-h-screen text-white relative overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-black">
+      {/* ================= BACKGROUND EFFECTS ================= */}
+      <div className="absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute w-[500px] h-[500px] bg-blue-500/20 blur-[120px] -top-40 -left-40 animate-pulse" />
+        <div className="absolute w-[500px] h-[500px] bg-purple-500/20 blur-[140px] -bottom-40 -right-40 animate-pulse" />
 
-      {/* Hero Section */}
-      <section className="pt-32 flex flex-col md:flex-row items-center justify-between max-w-7xl mx-auto px-6 gap-10 backdrop-blur-sm bg-black/30 p-10 rounded-3xl">
+        {/* noise texture */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.03)_1px,transparent_1px)] [background-size:20px_20px] opacity-30" />
+      </div>
+
+      {/* ================= NAVBAR ================= */}
+      <Navbar />
+
+      {/* ================= HERO ================= */}
+      <section className="pt-32 flex flex-col md:flex-row items-center justify-between max-w-7xl mx-auto px-6 gap-10 bg-black/30 backdrop-blur-xl p-10 rounded-3xl shadow-2xl animate-fadeIn">
         <div className="md:w-1/2 space-y-6">
-          <h1 className="text-5xl font-bold animate-fadeIn">
+          <h1 className="text-5xl font-bold animate-slideUp">
             Front End React JS
           </h1>
 
-          <h2 className="text-2xl text-gray-300 animate-fadeIn delay-200">
+          <h2 className="text-2xl text-gray-300 animate-slideUp delay-100">
             With Bahaa Shaheen
           </h2>
 
-          <p className="text-xl text-gray-200 animate-fadeIn delay-400">
+          <p className="text-xl text-gray-200 leading-relaxed animate-slideUp delay-200">
             Learn how to build modern web applications, track tasks, manage
-            points, and explore your ranking among peers.
+            points, and explore your ranking among peers with a real system.
           </p>
 
           {!isLoggedIn && (
             <button
               onClick={() => navigate("/login")}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 animate-fadeIn delay-600"
+              className="mt-4 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:scale-105 animate-slideUp delay-300"
             >
               Get Started
             </button>
           )}
         </div>
 
-        <div className="md:w-1/2 flex justify-center animate-fadeIn delay-600">
+        <div className="md:w-1/2 flex justify-center animate-scaleIn">
           <img
             src={heroImage}
             alt="Bahaa Shaheen"
-            className="w-64 h-64 rounded-full border-4 border-white shadow-lg object-cover"
+            className="w-72 h-72 rounded-full border-4 border-white/20 shadow-2xl object-cover hover:scale-105 transition duration-500"
           />
         </div>
       </section>
 
-      {/* Logos Slider */}
-      <section className="mt-20 overflow-hidden">
-        <h2 className="text-center text-3xl font-bold mb-8">
+      {/* ================= LOGOS ================= */}
+      <section className="mt-24 overflow-hidden">
+        <h2 className="text-center text-3xl font-bold mb-10 animate-fadeIn">
           Technologies You Will Learn
         </h2>
 
         <div className="relative w-full overflow-hidden">
-          <div className="flex gap-16 animate-marquee">
+          <div className="flex gap-16 w-max animate-marqueeSlow">
             {logos.map((logo, index) => (
               <img
                 key={index}
                 src={logo}
                 alt="tech logo"
-                className="w-24 h-24 object-contain opacity-80 hover:opacity-100 transition"
+                className="w-20 h-20 object-contain opacity-70 hover:opacity-100 hover:scale-110 transition duration-300"
               />
             ))}
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="mt-24 max-w-6xl mx-auto px-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
-          <div className="bg-black/40 backdrop-blur-md p-10 rounded-2xl shadow-lg">
-            <h3 className="text-5xl font-bold text-blue-400">3+</h3>
-            <p className="text-gray-300 mt-3 text-lg">Course Levels</p>
-          </div>
-
-          <div className="bg-black/40 backdrop-blur-md p-10 rounded-2xl shadow-lg">
-            <h3 className="text-5xl font-bold text-green-400">214+</h3>
-            <p className="text-gray-300 mt-3 text-lg">Registered Students</p>
-          </div>
-
-          <div className="bg-black/40 backdrop-blur-md p-10 rounded-2xl shadow-lg">
-            <h3 className="text-5xl font-bold text-purple-400">3+</h3>
-            <p className="text-gray-300 mt-3 text-lg">Years Experience</p>
-          </div>
+      {/* ================= STATS ================= */}
+      <section className="mt-28 max-w-6xl mx-auto px-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+          {[
+            { value: "3+", label: "Course Levels", color: "text-blue-400" },
+            {
+              value: "214+",
+              label: "Registered Students",
+              color: "text-green-400",
+            },
+            {
+              value: "3+",
+              label: "Years Experience",
+              color: "text-purple-400",
+            },
+          ].map((item, i) => (
+            <div
+              key={i}
+              className="bg-white/5 backdrop-blur-xl border border-white/10 p-10 rounded-3xl shadow-xl hover:scale-105 transition duration-500 animate-fadeIn"
+              style={{ animationDelay: `${i * 0.2}s` }}
+            >
+              <h3 className={`text-5xl font-bold ${item.color}`}>
+                {item.value}
+              </h3>
+              <p className="text-gray-300 mt-3 text-lg">{item.label}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Tailwind animation classes */}
+      {/* ================= ANIMATIONS ================= */}
       <style>
         {`
           @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+
+          @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
           }
 
-          .animate-fadeIn {
-            animation: fadeIn 1s ease forwards;
+          @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
           }
 
-          .animate-fadeIn.delay-200 {
-            animation-delay: 0.2s;
+          @keyframes marqueeSlow {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
           }
 
-          .animate-fadeIn.delay-400 {
-            animation-delay: 0.4s;
-          }
+          .animate-fadeIn { animation: fadeIn 1s ease forwards; }
+          .animate-slideUp { animation: slideUp 1s ease forwards; }
+          .animate-scaleIn { animation: scaleIn 1s ease forwards; }
+          .animate-marqueeSlow { animation: marqueeSlow 18s linear infinite; }
 
-          .animate-fadeIn.delay-600 {
-            animation-delay: 0.6s;
-          }
-
-          @keyframes marquee {
-            0% {
-              transform: translateX(100%);
-            }
-            100% {
-              transform: translateX(-100%);
-            }
-          }
-
-          .animate-marquee {
-            animation: marquee 12s linear infinite;
-          }
+          .delay-100 { animation-delay: 0.1s; }
+          .delay-200 { animation-delay: 0.2s; }
+          .delay-300 { animation-delay: 0.3s; }
         `}
       </style>
+
+      {/* ================= FOOTER ================= */}
       <Testimonials />
       <Footer />
     </div>

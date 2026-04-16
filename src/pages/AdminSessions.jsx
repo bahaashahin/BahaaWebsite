@@ -8,6 +8,7 @@ import {
   doc,
 } from "firebase/firestore";
 import useAdmin from "../hooks/useAdmin";
+import { FaTrash } from "react-icons/fa";
 
 export default function AdminSessions() {
   const { isAdmin, loading } = useAdmin();
@@ -19,13 +20,12 @@ export default function AdminSessions() {
     link: "",
   });
 
-  // 🔥 added points per question
   const [quiz, setQuiz] = useState([
     {
       question: "",
       options: ["", "", ""],
       correct: 0,
-      points: 1, // ⭐ NEW
+      points: 1,
     },
   ]);
 
@@ -64,12 +64,11 @@ export default function AdminSessions() {
     fetchSessions();
   };
 
-  // ================= UI =================
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white px-4 py-10 flex flex-col items-center gap-10">
       <h2 className="text-3xl font-bold text-center">Admin Sessions Panel</h2>
 
-      {/* CREATE */}
+      {/* ================= CREATE ================= */}
       <div className="w-full max-w-2xl bg-white/5 p-6 rounded-2xl border border-white/10 flex flex-col gap-4">
         <input
           placeholder="Session Title"
@@ -100,7 +99,22 @@ export default function AdminSessions() {
 
         {/* ================= QUIZ ================= */}
         {quiz.map((q, i) => (
-          <div key={i} className="bg-black/30 p-4 rounded flex flex-col gap-3">
+          <div
+            key={i}
+            className="bg-black/30 p-4 rounded flex flex-col gap-3 relative"
+          >
+            {/* DELETE QUESTION */}
+            <button
+              onClick={() => {
+                const newQuiz = quiz.filter((_, index) => index !== i);
+                setQuiz(newQuiz);
+              }}
+              className="absolute top-3 right-3 text-red-400 hover:text-red-600 transition"
+            >
+              <FaTrash />
+            </button>
+
+            {/* QUESTION */}
             <input
               placeholder="Question"
               className="p-2 rounded bg-white/10"
@@ -145,7 +159,7 @@ export default function AdminSessions() {
               </select>
             </div>
 
-            {/* ⭐ POINTS */}
+            {/* POINTS */}
             <input
               type="number"
               placeholder="Question Points"
@@ -180,7 +194,7 @@ export default function AdminSessions() {
         </button>
       </div>
 
-      {/* LIST */}
+      {/* ================= LIST ================= */}
       <div className="w-full max-w-4xl grid md:grid-cols-2 gap-6">
         {sessions.map((s) => (
           <div

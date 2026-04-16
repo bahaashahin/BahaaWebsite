@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { auth, db } from "../firebase";
 import { doc, getDoc, collection, getDocs } from "firebase/firestore";
+import { FaCheck, FaTimes } from "react-icons/fa";
 import Footer from "../components/Footer";
 
 export default function Dashboard() {
   const [student, setStudent] = useState(null);
   const [students, setStudents] = useState([]);
+  const [sessionsStatus, setSessionsStatus] = useState([]); // ✅ new state
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -13,10 +15,38 @@ export default function Dashboard() {
       if (!auth.currentUser) return;
       const uid = auth.currentUser.uid;
 
+      // 🔹 student data
       const docRef = doc(db, "students", uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) setStudent(docSnap.data());
 
+      // 🔹 completed sessions
+      const completedRef = doc(db, "completedSessions", uid);
+      const completedSnap = await getDoc(completedRef);
+
+      let completedData = {};
+      if (completedSnap.exists()) {
+        completedData = completedSnap.data();
+      }
+
+      // 🔹 all sessions
+      const sessionsSnap = await getDocs(collection(db, "sessions"));
+      const sessionsArr = [];
+
+      sessionsSnap.forEach((s) => {
+        const sessionId = s.id;
+        const sessionData = s.data();
+
+        sessionsArr.push({
+          id: sessionId,
+          name: sessionData.title || sessionId,
+          completed: completedData[sessionId]?.completed || false,
+        });
+      });
+
+      setSessionsStatus(sessionsArr);
+
+      // 🔹 all students (ranking)
       const querySnapshot = await getDocs(collection(db, "students"));
       const allStudents = [];
 
@@ -80,6 +110,53 @@ export default function Dashboard() {
           <p>
             <span className="text-gray-400">Level:</span> {student?.Level}
           </p>
+        </div>
+      </div>
+
+      {/* ================= SESSIONS STATUS ================= */}
+      <div className="w-full max-w-3xl p-6 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-xl text-white">
+        <h2 className="text-xl font-bold mb-4">Sessions Progress</h2>
+
+        <div className="space-y-2">
+          {[...sessionsStatus]
+            .sort((a, b) => {
+              const timeA = a.createdAt || 0;
+              const timeB = b.createdAt || 0;
+
+              if (timeB !== timeA) return timeB - timeA;
+
+              // fallback لو مفيش createdAt
+              return b.id.localeCompare(a.id);
+            })
+            .map((session) => {
+              const isCompleted = session.completed === true;
+
+              return (
+                <div
+                  key={session.id}
+                  className={`flex justify-between items-center p-3 rounded-xl transition
+        ${
+          isCompleted
+            ? "bg-blue-500/20 border border-blue-400/30"
+            : "bg-black/30"
+        }`}
+                >
+                  <span>{session.name}</span>
+
+                  <span
+                    className={`w-8 h-8 flex items-center justify-center rounded-full ${
+                      isCompleted ? "bg-blue-500" : "bg-gray-500"
+                    }`}
+                  >
+                    {isCompleted ? (
+                      <FaCheck className="text-white text-sm" />
+                    ) : (
+                      <FaTimes className="text-white text-sm" />
+                    )}
+                  </span>
+                </div>
+              );
+            })}
         </div>
       </div>
 

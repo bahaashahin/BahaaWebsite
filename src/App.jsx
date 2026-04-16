@@ -65,12 +65,16 @@ function App() {
   if (loading)
     return <p className="text-white text-center mt-20">Loading...</p>;
 
+  // 🔥 IMPORTANT: force start on home
+  if (typeof window !== "undefined") {
+    window.history.replaceState(null, "", "/");
+  }
+
   return (
     <Router>
       <Navbar user={user} role={role} />
 
-      <div className="md:ml-64  md:mt-0 min-h-screen bg-gray-100">
-        {" "}
+      <div className="md:ml-64 md:mt-0 min-h-screen bg-gray-100">
         <Routes>
           <Route path="/" element={<Home />} />
 
@@ -93,6 +97,7 @@ function App() {
               )
             }
           />
+
           <Route
             path="/courses"
             element={
@@ -136,7 +141,8 @@ function App() {
 
           <Route path="/courses" element={<Courses />} />
 
-          <Route path="*" element={<Home />} />
+          {/* fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </Router>

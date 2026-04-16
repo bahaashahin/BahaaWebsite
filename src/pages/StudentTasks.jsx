@@ -57,57 +57,66 @@ export default function StudentTasks() {
   };
 
   return (
-    <div className="min-h-screen p-6 bg-blue-950 flex flex-col items-center gap-6">
-      <h2 className="text-white text-2xl font-bold">المهام المخصصة لك</h2>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 p-6 flex flex-col items-center gap-6">
+      <div className="h-10" />
 
-      {/* رسالة الأدمن */}
+      <h2 className="text-white text-3xl font-bold mb-2">My Tasks</h2>
+
+      {/* ================= ADMIN MESSAGE ================= */}
       {adminMessage && (
-        <div className="w-full max-w-md p-4 rounded-2xl bg-black/40 backdrop-blur-md text-white">
+        <div className="w-full max-w-2xl p-5 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 text-white shadow-lg">
           {adminMessage}
         </div>
       )}
 
-      {/* الفورم */}
+      {/* ================= FORM LINK ================= */}
       {formLink && (
-        <div className="w-full max-w-md p-4 rounded-2xl bg-blue-900 text-white shadow-lg">
-          <h3 className="font-bold mb-2">نموذج الطلاب</h3>
+        <div className="w-full max-w-2xl p-5 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 text-white shadow-lg">
+          <h3 className="font-bold mb-2 text-lg">Student Form</h3>
           <a
             href={formLink}
             target="_blank"
-            className="underline text-blue-200"
+            className="text-blue-400 underline"
           >
-            فتح النموذج
+            Open Form
           </a>
         </div>
       )}
 
-      {/* المهام */}
-      <div className="flex flex-col gap-4 w-full max-w-md">
+      {/* ================= TASKS ================= */}
+      <div className="flex flex-col gap-4 w-full max-w-2xl">
         {tasks.map((task) => {
           const isCompleted = completedTasks.includes(task.id);
 
           return (
             <div
               key={task.id}
-              className={`p-4 rounded-2xl shadow-lg flex flex-col gap-2 ${
+              className={`p-5 rounded-3xl shadow-lg backdrop-blur-xl border transition hover:scale-[1.01]
+              ${
                 isCompleted
-                  ? "bg-green-600 text-white"
-                  : "bg-blue-800 text-white"
+                  ? "bg-green-500/10 border-green-500/30"
+                  : "bg-white/5 border-white/10"
               }`}
             >
-              <h3 className="font-bold text-lg">{task.title}</h3>
+              <h3 className="font-bold text-xl text-white">{task.title}</h3>
 
-              <p>{task.description}</p>
+              <p className="text-gray-300 mt-1 text-sm">{task.description}</p>
 
-              <p>نقاط: {task.points}</p>
-
-              <p>Deadline: {task.deadline || "غير محدد"}</p>
+              <div className="flex justify-between items-center mt-3 text-sm text-gray-400">
+                <span>Points: {task.points}</span>
+                <span>Deadline: {task.deadline || "Not set"}</span>
+              </div>
 
               <button
                 onClick={() => handleComplete(task.id)}
-                className="mt-2 px-3 py-1 rounded bg-black/30"
+                className={`mt-4 w-full py-2 rounded-xl font-medium transition
+                ${
+                  isCompleted
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                }`}
               >
-                {isCompleted ? "تم الإنجاز" : "أكمل المهمة"}
+                {isCompleted ? "Completed ✔" : "Mark as Done"}
               </button>
             </div>
           );
