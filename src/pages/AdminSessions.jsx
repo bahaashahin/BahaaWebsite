@@ -14,6 +14,8 @@ export default function AdminSessions() {
   const { isAdmin, loading } = useAdmin();
 
   const [sessions, setSessions] = useState([]);
+  const [selectedQuiz, setSelectedQuiz] = useState(null); // ⭐ NEW
+
   const [newSession, setNewSession] = useState({
     title: "",
     description: "",
@@ -53,7 +55,6 @@ export default function AdminSessions() {
     });
 
     setNewSession({ title: "", description: "", link: "" });
-
     setQuiz([{ question: "", options: ["", "", ""], correct: 0, points: 1 }]);
 
     fetchSessions();
@@ -97,24 +98,22 @@ export default function AdminSessions() {
           }
         />
 
-        {/* ================= QUIZ ================= */}
+        {/* QUIZ */}
         {quiz.map((q, i) => (
           <div
             key={i}
             className="bg-black/30 p-4 rounded flex flex-col gap-3 relative"
           >
-            {/* DELETE QUESTION */}
             <button
               onClick={() => {
                 const newQuiz = quiz.filter((_, index) => index !== i);
                 setQuiz(newQuiz);
               }}
-              className="absolute top-3 right-3 text-red-400 hover:text-red-600 transition"
+              className="absolute top-3 right-3 text-red-400"
             >
               <FaTrash />
             </button>
 
-            {/* QUESTION */}
             <input
               placeholder="Question"
               className="p-2 rounded bg-white/10"
@@ -126,12 +125,11 @@ export default function AdminSessions() {
               }}
             />
 
-            {/* OPTIONS */}
             {q.options.map((opt, j) => (
               <input
                 key={j}
                 placeholder={`Option ${j + 1}`}
-                className="p-2 rounded bg-white/10 mb-1"
+                className="p-2 rounded bg-white/10"
                 value={opt}
                 onChange={(e) => {
                   const newQuiz = [...quiz];
@@ -141,9 +139,8 @@ export default function AdminSessions() {
               />
             ))}
 
-            {/* CORRECT ANSWER */}
             <div className="flex items-center gap-2">
-              <span>Correct Answer:</span>
+              <span>Correct:</span>
               <select
                 className="text-black p-1 rounded"
                 value={q.correct}
@@ -159,10 +156,9 @@ export default function AdminSessions() {
               </select>
             </div>
 
-            {/* POINTS */}
             <input
               type="number"
-              placeholder="Question Points"
+              placeholder="Points"
               className="p-2 rounded bg-white/10"
               value={q.points}
               onChange={(e) => {
@@ -208,15 +204,58 @@ export default function AdminSessions() {
               Open Session
             </a>
 
+            {/* ⭐ VIEW QUIZ BUTTON */}
+            <button
+              onClick={() => setSelectedQuiz(s.quiz)}
+              className="bg-indigo-600 px-3 py-1 rounded mt-3 mr-2"
+            >
+              View Quiz
+            </button>
+
             <button
               onClick={() => handleDelete(s.id)}
-              className="bg-red-600 mt-3 px-3 py-1 rounded"
+              className="bg-red-600 px-3 py-1 rounded mt-3"
             >
               Delete
             </button>
           </div>
         ))}
       </div>
+
+      {/* ================= QUIZ MODAL ================= */}
+      {selectedQuiz && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 max-w-2xl w-full p-6 rounded-2xl max-h-[80vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4">Quiz Preview</h2>
+
+            {selectedQuiz.map((q, i) => (
+              <div key={i} className="mb-5 bg-white/5 p-4 rounded">
+                <h3 className="font-bold mb-2">
+                  {i + 1}. {q.question}
+                </h3>
+
+                {q.options.map((opt, j) => (
+                  <p
+                    key={j}
+                    className={`p-1 ${
+                      j === q.correct ? "text-green-400 font-bold" : ""
+                    }`}
+                  >
+                    {opt}
+                  </p>
+                ))}
+              </div>
+            ))}
+
+            <button
+              onClick={() => setSelectedQuiz(null)}
+              className="mt-3 bg-red-600 px-4 py-2 rounded"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -12,6 +12,8 @@ export default function SessionDetails() {
   const [completed, setCompleted] = useState(false);
   const [score, setScore] = useState(null);
 
+  const [showReview, setShowReview] = useState(false); // ⭐ NEW
+
   const userId = auth.currentUser?.uid;
 
   useEffect(() => {
@@ -34,6 +36,7 @@ export default function SessionDetails() {
       if (data[id]) {
         setCompleted(true);
         setScore(data[id].score);
+        setAnswers(data[id].answers || []);
       }
     }
   };
@@ -59,6 +62,7 @@ export default function SessionDetails() {
       [id]: {
         score: finalScore,
         completed: passed,
+        answers,
       },
     });
 
@@ -111,6 +115,14 @@ export default function SessionDetails() {
             Score: <span className="font-bold">{score}</span> /{" "}
             {session.quiz.length}
           </p>
+
+          {/* ⭐ BUTTON REVIEW */}
+          <button
+            onClick={() => setShowReview(!showReview)}
+            className="mt-4 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition"
+          >
+            {showReview ? "Hide Review" : "Show Review"}
+          </button>
         </div>
       )}
 
@@ -132,7 +144,7 @@ export default function SessionDetails() {
           {session.quiz.map((q, i) => (
             <div
               key={i}
-              className="bg-white/5 backdrop-blur-xl border border-white/10 p-5 rounded-2xl shadow-lg hover:bg-white/10 transition"
+              className="bg-white/5 backdrop-blur-xl border border-white/10 p-5 rounded-2xl shadow-lg"
             >
               <h3 className="font-bold mb-3 text-lg">
                 {i + 1}. {q.question}
@@ -142,7 +154,7 @@ export default function SessionDetails() {
                 {q.options.map((opt, j) => (
                   <label
                     key={j}
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition"
+                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 cursor-pointer"
                   >
                     <input
                       type="radio"
@@ -154,7 +166,7 @@ export default function SessionDetails() {
                         setAnswers(newAns);
                       }}
                     />
-                    <span className="text-gray-200">{opt}</span>
+                    <span>{opt}</span>
                   </label>
                 ))}
               </div>
@@ -163,10 +175,61 @@ export default function SessionDetails() {
 
           <button
             onClick={handleSubmit}
-            className="bg-green-600 hover:bg-green-700 transition px-6 py-3 rounded-xl font-semibold shadow-lg hover:scale-105"
+            className="bg-green-600 hover:bg-green-700 transition px-6 py-3 rounded-xl font-semibold"
           >
             Submit Quiz
           </button>
+        </div>
+      )}
+
+      {/* ================= REVIEW SECTION ================= */}
+      {showReview && completed && session.quiz && (
+        <div className="max-w-3xl mx-auto mt-10 flex flex-col gap-5">
+          <h2 className="text-2xl font-bold text-center">
+            Review Your Answers
+          </h2>
+
+          {session.quiz.map((q, i) => {
+            const userAnswer = answers?.[i];
+            const correct = q.correct;
+
+            return (
+              <div
+                key={i}
+                className="p-5 rounded-2xl bg-white/5 border border-white/10"
+              >
+                <h3 className="font-bold mb-2">
+                  {i + 1}. {q.question}
+                </h3>
+
+                {q.options.map((opt, j) => {
+                  const isCorrect = j === correct;
+                  const isUser = j === userAnswer;
+
+                  return (
+                    <div
+                      key={j}
+                      className={`p-2 rounded-lg mb-1 border ${
+                        isCorrect
+                          ? "bg-green-500/20 border-green-500"
+                          : isUser && !isCorrect
+                            ? "bg-red-500/20 border-red-500"
+                            : "border-white/10"
+                      }`}
+                    >
+                      {opt}
+                      {isCorrect && (
+                        <span className="text-green-400 ml-2">✔ Correct</span>
+                      )}
+                      {isUser && !isCorrect && (
+                        <span className="text-red-400 ml-2">✖ Your answer</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
