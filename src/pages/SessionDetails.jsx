@@ -12,6 +12,7 @@ export default function SessionDetails() {
   const [completed, setCompleted] = useState(false);
   const [score, setScore] = useState(0);
   const [showReview, setShowReview] = useState(false);
+  const [error, setError] = useState("");
 
   const userId = auth.currentUser?.uid;
 
@@ -19,6 +20,16 @@ export default function SessionDetails() {
     fetchSession();
     checkCompleted();
   }, []);
+
+  // 🔥 Auto hide message
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError("");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   const fetchSession = async () => {
     const snap = await getDoc(doc(db, "sessions", id));
@@ -47,6 +58,11 @@ export default function SessionDetails() {
   const handleSubmit = async () => {
     if (!session || !userId) return;
 
+    if (answers.length !== session.quiz.length || answers.includes(undefined)) {
+      setError("⚠️ Please answer all questions before submitting.");
+      return;
+    }
+
     let finalScore = 0;
 
     session.quiz.forEach((q, i) => {
@@ -66,7 +82,7 @@ export default function SessionDetails() {
         score: finalScore,
         completed: passed,
         answers,
-        timestamp: Date.now(), // 🔥 مهم للترتيب
+        timestamp: Date.now(),
       },
     });
 
@@ -80,6 +96,15 @@ export default function SessionDetails() {
 
   return (
     <div className="min-h-screen text-white p-6 bg-gradient-to-br from-slate-950 via-blue-950 to-black">
+      {/* 🔥 Toast Message */}
+      {error && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 animate-slideDown">
+          <div className="bg-red-500/90 backdrop-blur-xl text-white px-6 py-3 rounded-2xl shadow-lg border border-red-300/30">
+            {error}
+          </div>
+        </div>
+      )}
+
       {/* HEADER */}
       <div className="max-w-3xl mx-auto bg-white/5 p-6 rounded-2xl mb-6">
         <h1 className="text-2xl font-bold">{session.title}</h1>
@@ -92,7 +117,6 @@ export default function SessionDetails() {
           <div className="flex justify-between items-center">
             <h2 className="text-green-300 font-bold">🎉 Completed</h2>
 
-            {/* ⭐ SCORE جنب الصح */}
             <span className="text-white font-bold bg-green-600 px-3 py-1 rounded-lg">
               {score} / {session.quiz.length}
             </span>
