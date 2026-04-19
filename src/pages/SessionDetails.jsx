@@ -79,6 +79,7 @@ export default function SessionDetails() {
     await setDoc(ref, {
       ...oldData,
       [id]: {
+        sessionId: id,
         score: finalScore,
         completed: passed,
         answers,

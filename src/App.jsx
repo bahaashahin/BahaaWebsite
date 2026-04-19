@@ -15,6 +15,7 @@ import Courses from "./pages/Courses";
 import AdminSessions from "./pages/AdminSessions";
 import StudentSessions from "./pages/StudentSessions";
 import SessionDetails from "./pages/SessionDetails";
+import SessionReport from "./pages/SessionReport";
 import {
   BrowserRouter as Router,
   Route,
@@ -77,12 +78,10 @@ function App() {
       <div className="md:ml-64 md:mt-0 min-h-screen bg-gray-100">
         <Routes>
           <Route path="/" element={<Home />} />
-
           <Route
             path="/dashboard"
             element={user ? <Dashboard /> : <Navigate to="/login" />}
           />
-
           <Route
             path="/tasks"
             element={
@@ -97,7 +96,6 @@ function App() {
               )
             }
           />
-
           <Route
             path="/courses"
             element={
@@ -112,9 +110,7 @@ function App() {
               )
             }
           />
-
           <Route path="/session/:id" element={<SessionDetails />} />
-
           <Route
             path="/admin-points"
             element={
@@ -123,24 +119,20 @@ function App() {
               </ProtectedAdminRoute>
             }
           />
-
           <Route
             path="/quiz"
             element={user ? <Quiz /> : <Navigate to="/login" />}
           />
-
           <Route
             path="/login"
             element={!user ? <Login /> : <Navigate to="/dashboard" />}
           />
-
           <Route
             path="/register"
             element={!user ? <Register /> : <Navigate to="/dashboard" />}
           />
-
           <Route path="/courses" element={<Courses />} />
-
+          <Route path="/session-report/:id" element={<SessionReport />} />;
           {/* fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

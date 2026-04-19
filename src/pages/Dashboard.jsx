@@ -2,24 +2,37 @@ import { useEffect, useState } from "react";
 import { auth, db } from "../firebase";
 import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { FaCheck, FaTimes } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
   const [student, setStudent] = useState(null);
   const [students, setStudents] = useState([]);
   const [sessionsStatus, setSessionsStatus] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
       if (!auth.currentUser) return;
       const uid = auth.currentUser.uid;
 
-      // student
+      // ================= ADMIN CHECK (SAFE) =================
+      try {
+        const adminRef = doc(db, "admins", uid);
+        const adminSnap = await getDoc(adminRef);
+        if (adminSnap.exists()) setIsAdmin(true);
+      } catch (err) {
+        setIsAdmin(false);
+      }
+
+      // ================= STUDENT =================
       const docRef = doc(db, "students", uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) setStudent(docSnap.data());
 
-      // completed sessions
+      // ================= COMPLETED SESSIONS =================
       const completedRef = doc(db, "completedSessions", uid);
       const completedSnap = await getDoc(completedRef);
 
@@ -28,7 +41,7 @@ export default function Dashboard() {
         completedData = completedSnap.data();
       }
 
-      // sessions
+      // ================= SESSIONS =================
       const sessionsSnap = await getDocs(collection(db, "sessions"));
 
       const sessionsArr = [];
@@ -47,12 +60,10 @@ export default function Dashboard() {
         });
       });
 
-      // 🔥 FIXED SORT (NEWEST FIRST)
       sessionsArr.sort((a, b) => b.createdAt - a.createdAt);
-
       setSessionsStatus(sessionsArr);
 
-      // students ranking
+      // ================= STUDENTS RANKING =================
       const querySnapshot = await getDocs(collection(db, "students"));
       const allStudents = [];
 
@@ -96,7 +107,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 p-6 flex flex-col items-center space-y-6">
       <div className="mb-10" />
 
-      {/* STUDENT */}
+      {/* ================= STUDENT ================= */}
       <div className="w-full max-w-3xl p-6 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl text-white">
         <h1 className="text-3xl font-bold mb-4">{student?.Name}</h1>
 
@@ -109,51 +120,54 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* SESSIONS */}
-      {/* ================= SESSIONS STATUS ================= */}
-      {/* ================= SESSIONS STATUS ================= */}
+      {/* ================= SESSIONS ================= */}
       <div className="w-full max-w-3xl p-6 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 text-white">
         <h2 className="text-xl font-bold mb-4">Sessions Progress</h2>
 
         <div className="space-y-2">
-          {[...sessionsStatus]
-            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-            .map((session) => {
-              const isCompleted = session.completed;
-              const score = session.score;
+          {sessionsStatus.map((session) => {
+            const isCompleted = session.completed;
+            const score = session.score;
 
-              return (
-                <div
-                  key={session.id}
-                  className={`flex justify-between items-center p-3 rounded-xl transition
-            ${isCompleted ? "bg-blue-500/20" : "bg-black/30"}`}
-                >
-                  <span className="flex items-center gap-2">
-                    {session.name}
-                  </span>
+            return (
+              <div
+                key={session.id}
+                className={`flex justify-between items-center p-3 rounded-xl transition ${
+                  isCompleted ? "bg-blue-500/20" : "bg-black/30"
+                }`}
+              >
+                <span>{session.name}</span>
 
-                  <div className="flex items-center gap-2">
-                    {isCompleted && (
-                      <span className="text-xs text-green-300">
-                        {score} pts
-                      </span>
-                    )}
+                <div className="flex items-center gap-2">
+                  {isCompleted && (
+                    <span className="text-xs text-green-300">{score} pts</span>
+                  )}
 
-                    <span
-                      className={`w-8 h-8 flex items-center justify-center rounded-full ${
-                        isCompleted ? "bg-blue-500" : "bg-gray-500"
-                      }`}
+                  {/* ================= ADMIN BUTTON ================= */}
+                  {isAdmin && (
+                    <button
+                      onClick={() => navigate(`/session-report/${session.id}`)}
+                      className="text-xs bg-indigo-600 px-3 py-1 rounded-lg hover:bg-indigo-500"
                     >
-                      {isCompleted ? <FaCheck /> : <FaTimes />}
-                    </span>
-                  </div>
+                      Show Details
+                    </button>
+                  )}
+
+                  <span
+                    className={`w-8 h-8 flex items-center justify-center rounded-full ${
+                      isCompleted ? "bg-blue-500" : "bg-gray-500"
+                    }`}
+                  >
+                    {isCompleted ? <FaCheck /> : <FaTimes />}
+                  </span>
                 </div>
-              );
-            })}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* STATS */}
+      {/* ================= STATS ================= */}
       <div className="w-full max-w-3xl grid md:grid-cols-2 gap-4">
         <div className="p-6 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-xl text-white flex justify-between items-center">
           <div>
@@ -177,7 +191,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* RANKING */}
+      {/* ================= RANKING ================= */}
       <div className="w-full max-w-3xl p-6 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-xl">
         <h2 className="text-xl font-bold mb-4 text-center text-white">
           Ranking
