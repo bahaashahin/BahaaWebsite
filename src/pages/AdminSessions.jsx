@@ -193,9 +193,10 @@ export default function AdminSessions() {
               <FaTrash />
             </button>
 
-            <input
-              placeholder="Question"
-              className="p-2 rounded bg-white/10"
+            {/* ⭐ تم تغيير الـ Input إلى Textarea لدعم الأكواد والأسطر الجديدة وسلاسة الضغط على Enter */}
+            <textarea
+              placeholder="Question text (Supports code & line breaks... Enter works here)"
+              className="p-3 rounded bg-white/10 text-sm font-mono h-24 resize-y"
               value={q.question}
               onChange={(e) => {
                 const newQuiz = [...quiz];
@@ -330,19 +331,25 @@ export default function AdminSessions() {
             <h2 className="text-xl font-bold mb-4">Quiz Preview</h2>
 
             {selectedQuiz.map((q, i) => (
-              <div key={i} className="mb-5 bg-white/5 p-4 rounded">
-                <h3 className="font-bold mb-2">
-                  {i + 1}. {q.question}
+              <div
+                key={i}
+                className="mb-5 bg-white/5 p-4 rounded border border-white/5"
+              >
+                {/* ⭐ تم إضافة کلاسات whitespace-pre-wrap و font-mono لعرض الرموز والأكواد والأسطر الجديدة والمسافات بدقة تامة */}
+                <h3 className="font-bold text-gray-200 mb-3 whitespace-pre-wrap font-mono text-sm leading-relaxed bg-black/20 p-3 rounded border border-white/5">
+                  {i + 1}.\n{q.question}
                 </h3>
 
                 {q.options.map((opt, j) => (
                   <p
                     key={j}
-                    className={`p-1 ${
-                      j === q.correct ? "text-green-400 font-bold" : ""
+                    className={`p-2 rounded mt-1 text-sm ${
+                      j === q.correct
+                        ? "text-green-400 font-bold bg-green-500/10"
+                        : "text-gray-300"
                     }`}
                   >
-                    {opt}
+                    {j + 1}. {opt}
                   </p>
                 ))}
               </div>

@@ -305,16 +305,17 @@ export default function SessionDetails() {
           {session.quiz.map((q, i) => (
             <div
               key={i}
-              className="p-4 bg-white/5 rounded-xl border border-white/5"
+              className="p-4 bg-white/5 rounded-xl border border-white/5 animate-fadeIn"
             >
-              <h3 className="font-semibold text-gray-200">
+              {/* ⭐ إضافة كلاسات الـ whitespace والخط ليعرض نص الكود والمسافات البرمجية بدقة للطالب */}
+              <h3 className="font-semibold text-gray-200 text-sm md:text-base leading-relaxed whitespace-pre-wrap font-mono bg-black/10 p-3 rounded-xl border border-white/5 mb-3">
                 {i + 1}. {q.question}
               </h3>
 
               {q.options.map((opt, j) => (
                 <label
                   key={j}
-                  className="block mt-2 cursor-pointer p-2.5 rounded-lg bg-black/10 hover:bg-white/5 transition-colors"
+                  className="block mt-2 cursor-pointer p-2.5 rounded-lg bg-black/10 hover:bg-white/5 transition-colors border border-transparent hover:border-white/5"
                 >
                   <input
                     type="radio"
@@ -366,7 +367,8 @@ export default function SessionDetails() {
               key={i}
               className="p-4 bg-white/5 rounded-xl border border-white/5"
             >
-              <h3 className="font-medium text-gray-200">
+              {/* ⭐ تعديل عرض السؤال في جزء المراجعة لدعم الأكواد والمسافات */}
+              <h3 className="font-semibold text-gray-200 text-sm leading-relaxed whitespace-pre-wrap font-mono bg-black/20 p-3 rounded-xl border border-white/5 mb-3">
                 {i + 1}. {q.question}
               </h3>
 
@@ -387,12 +389,12 @@ export default function SessionDetails() {
                   >
                     <span>{opt}</span>
                     {isCorrect && (
-                      <span className="text-xs bg-green-500/20 px-2 py-0.5 rounded">
+                      <span className="text-xs bg-green-500/20 px-2 py-0.5 rounded text-green-300 font-bold">
                         Correct Answer
                       </span>
                     )}
                     {isUser && !isCorrect && (
-                      <span className="text-xs bg-red-500/20 px-2 py-0.5 rounded">
+                      <span className="text-xs bg-red-500/20 px-2 py-0.5 rounded text-red-300 font-bold">
                         Your Answer
                       </span>
                     )}
