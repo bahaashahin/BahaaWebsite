@@ -173,7 +173,7 @@ export default function Login() {
         </button>
 
         {/* Forgot Password */}
-        <p className="text-center mb-3 text-gray-400 text-sm">
+        {/* <p className="text-center mb-3 text-gray-400 text-sm">
           نسيت كلمة المرور؟{" "}
           <span
             className={`text-yellow-400 hover:underline cursor-pointer ${
@@ -183,10 +183,10 @@ export default function Login() {
           >
             {resetLoading ? "جاري الإرسال..." : "اضغط هنا لإعادة التعيين"}
           </span>
-        </p>
+        </p> */}
 
         {/* Register Link */}
-        <p className="text-center mb-3 text-gray-400 text-sm">
+        {/* <p className="text-center mb-3 text-gray-400 text-sm">
           لو معندكش حساب؟{" "}
           <span
             className="text-blue-400 hover:underline cursor-pointer"
@@ -194,14 +194,14 @@ export default function Login() {
           >
             قم بالتسجيل
           </span>
-        </p>
+        </p> */}
 
-        <button
+        {/* <button
           className="w-full bg-gradient-to-r from-blue-700 to-indigo-700 text-white p-3 rounded-xl hover:from-blue-800 hover:to-indigo-800 transition-all duration-300"
           onClick={() => navigate("/register")}
         >
           Register
-        </button>
+        </button> */}
 
         {/* Error Message */}
         {error && (

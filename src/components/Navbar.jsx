@@ -75,9 +75,9 @@ function Navbar() {
                 <FaUser /> Login
               </Link>
 
-              <Link to="/register" className={linkClass("/register")}>
+              {/* <Link to="/register" className={linkClass("/register")}>
                 <FaUser /> Register
-              </Link>
+              </Link> */}
             </>
           )}
 
@@ -97,11 +97,23 @@ function Navbar() {
                   NEW
                 </span>
               </Link>
+              {/* <Link to="/quizzes" className={linkClass("/quizzes")}>
+                📝 Exams
+              </Link> */}
 
               {isAdmin && (
-                <Link to="/admin-points" className={linkClass("/admin-points")}>
-                  <FaUserShield /> Admin
-                </Link>
+                <>
+                  <Link
+                    to="/admin-points"
+                    className={linkClass("/admin-points")}
+                  >
+                    <FaUserShield /> Admin
+                  </Link>
+
+                  {/* <Link to="/create-exam" className={linkClass("/create-exam")}>
+                    🧠 Create Exam
+                  </Link> */}
+                </>
               )}
             </>
           )}
@@ -162,13 +174,13 @@ function Navbar() {
                 Login
               </Link>
 
-              <Link
+              {/* <Link
                 onClick={() => setMobileOpen(false)}
                 to="/register"
                 className="hover:text-blue-400 transition"
               >
                 Register
-              </Link>
+              </Link> */}
             </>
           )}
 

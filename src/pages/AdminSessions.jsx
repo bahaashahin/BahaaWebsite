@@ -14,12 +14,14 @@ export default function AdminSessions() {
   const { isAdmin, loading } = useAdmin();
 
   const [sessions, setSessions] = useState([]);
-  const [selectedQuiz, setSelectedQuiz] = useState(null); // ⭐ NEW
+  const [selectedQuiz, setSelectedQuiz] = useState(null);
 
   const [newSession, setNewSession] = useState({
     title: "",
     description: "",
     link: "",
+    sessionFile: { title: "", url: "" },
+    sessionCode: { title: "", body: "" },
   });
 
   const [quiz, setQuiz] = useState([
@@ -54,7 +56,13 @@ export default function AdminSessions() {
       createdAt: Date.now(),
     });
 
-    setNewSession({ title: "", description: "", link: "" });
+    setNewSession({
+      title: "",
+      description: "",
+      link: "",
+      sessionFile: { title: "", url: "" },
+      sessionCode: { title: "", body: "" },
+    });
     setQuiz([{ question: "", options: ["", "", ""], correct: 0, points: 1 }]);
 
     fetchSessions();
@@ -71,6 +79,10 @@ export default function AdminSessions() {
 
       {/* ================= CREATE ================= */}
       <div className="w-full max-w-2xl bg-white/5 p-6 rounded-2xl border border-white/10 flex flex-col gap-4">
+        <h3 className="text-lg font-semibold border-b border-white/10 pb-2 text-blue-400">
+          Main Details
+        </h3>
+
         <input
           placeholder="Session Title"
           className="p-3 rounded bg-white/10"
@@ -90,7 +102,7 @@ export default function AdminSessions() {
         />
 
         <input
-          placeholder="Session Link"
+          placeholder="Session Link (Video/Meeting)"
           className="p-3 rounded bg-white/10"
           value={newSession.link}
           onChange={(e) =>
@@ -98,7 +110,74 @@ export default function AdminSessions() {
           }
         />
 
+        {/* ATTACHMENTS (FILES & CODE) */}
+        <h3 className="text-lg font-semibold border-b border-white/10 pt-4 pb-2 text-indigo-400">
+          Session Resources (Optional)
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input
+            placeholder="File Title (e.g., Session Presentation)"
+            className="p-3 rounded bg-white/10 text-sm"
+            value={newSession.sessionFile.title}
+            onChange={(e) =>
+              setNewSession({
+                ...newSession,
+                sessionFile: {
+                  ...newSession.sessionFile,
+                  title: e.target.value,
+                },
+              })
+            }
+          />
+          <input
+            placeholder="File URL (Drive / Dropbox Link)"
+            className="p-3 rounded bg-white/10 text-sm"
+            value={newSession.sessionFile.url}
+            onChange={(e) =>
+              setNewSession({
+                ...newSession,
+                sessionFile: { ...newSession.sessionFile, url: e.target.value },
+              })
+            }
+          />
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <input
+            placeholder="Code Snippet Title (e.g., App.js Source)"
+            className="p-3 rounded bg-white/10 text-sm"
+            value={newSession.sessionCode.title}
+            onChange={(e) =>
+              setNewSession({
+                ...newSession,
+                sessionCode: {
+                  ...newSession.sessionCode,
+                  title: e.target.value,
+                },
+              })
+            }
+          />
+          <textarea
+            placeholder="Paste your session code here..."
+            className="p-3 rounded bg-white/10 text-sm font-mono h-32"
+            value={newSession.sessionCode.body}
+            onChange={(e) =>
+              setNewSession({
+                ...newSession,
+                sessionCode: {
+                  ...newSession.sessionCode,
+                  body: e.target.value,
+                },
+              })
+            }
+          />
+        </div>
+
         {/* QUIZ */}
+        <h3 className="text-lg font-semibold border-b border-white/10 pt-4 pb-2 text-emerald-400">
+          Session Quiz
+        </h3>
         {quiz.map((q, i) => (
           <div
             key={i}
@@ -184,7 +263,7 @@ export default function AdminSessions() {
 
         <button
           onClick={handleCreate}
-          className="bg-blue-600 p-3 rounded font-bold"
+          className="bg-blue-600 p-3 rounded font-bold hover:bg-blue-500 transition-colors"
         >
           Create Session
         </button>
@@ -195,29 +274,51 @@ export default function AdminSessions() {
         {sessions.map((s) => (
           <div
             key={s.id}
-            className="bg-white/5 p-4 rounded border border-white/10"
+            className="bg-white/5 p-4 rounded border border-white/10 flex flex-col justify-between"
           >
-            <h3 className="font-bold text-lg">{s.title}</h3>
-            <p className="text-gray-300 text-sm">{s.description}</p>
+            <div>
+              <h3 className="font-bold text-lg">{s.title}</h3>
+              <p className="text-gray-300 text-sm mb-3">{s.description}</p>
 
-            <a href={s.link} className="text-blue-400 underline">
-              Open Session
-            </a>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {s.link && (
+                  <a
+                    href={s.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 text-xs bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20"
+                  >
+                    🔗 Session Link
+                  </a>
+                )}
+                {s.sessionFile?.url && (
+                  <span className="text-indigo-400 text-xs bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20">
+                    📁 Has File
+                  </span>
+                )}
+                {s.sessionCode?.body && (
+                  <span className="text-emerald-400 text-xs bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
+                    💻 Has Code
+                  </span>
+                )}
+              </div>
+            </div>
 
-            {/* ⭐ VIEW QUIZ BUTTON */}
-            <button
-              onClick={() => setSelectedQuiz(s.quiz)}
-              className="bg-indigo-600 px-3 py-1 rounded mt-3 mr-2"
-            >
-              View Quiz
-            </button>
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={() => setSelectedQuiz(s.quiz)}
+                className="bg-indigo-600 hover:bg-indigo-500 transition-colors px-3 py-1.5 rounded text-sm font-medium flex-1"
+              >
+                View Quiz
+              </button>
 
-            <button
-              onClick={() => handleDelete(s.id)}
-              className="bg-red-600 px-3 py-1 rounded mt-3"
-            >
-              Delete
-            </button>
+              <button
+                onClick={() => handleDelete(s.id)}
+                className="bg-red-600 hover:bg-red-500 transition-colors px-3 py-1.5 rounded text-sm font-medium"
+              >
+                <FaTrash className="inline" />
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -225,7 +326,7 @@ export default function AdminSessions() {
       {/* ================= QUIZ MODAL ================= */}
       {selectedQuiz && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 max-w-2xl w-full p-6 rounded-2xl max-h-[80vh] overflow-y-auto">
+          <div className="bg-slate-900 max-w-2xl w-full p-6 rounded-2xl max-h-[80vh] overflow-y-auto border border-white/10">
             <h2 className="text-xl font-bold mb-4">Quiz Preview</h2>
 
             {selectedQuiz.map((q, i) => (
@@ -249,7 +350,7 @@ export default function AdminSessions() {
 
             <button
               onClick={() => setSelectedQuiz(null)}
-              className="mt-3 bg-red-600 px-4 py-2 rounded"
+              className="mt-3 bg-red-600 hover:bg-red-500 transition-colors px-4 py-2 rounded font-medium"
             >
               Close
             </button>

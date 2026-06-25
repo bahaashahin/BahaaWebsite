@@ -16,6 +16,9 @@ import AdminSessions from "./pages/AdminSessions";
 import StudentSessions from "./pages/StudentSessions";
 import SessionDetails from "./pages/SessionDetails";
 import SessionReport from "./pages/SessionReport";
+import Exam from "./pages/Exam";
+import CreateExam from "./pages/CreateExam";
+import QuizList from "./pages/QuizList";
 import {
   BrowserRouter as Router,
   Route,
@@ -133,6 +136,23 @@ function App() {
           />
           <Route path="/courses" element={<Courses />} />
           <Route path="/session-report/:id" element={<SessionReport />} />;
+          {/* ================= EXAM ================= */}
+          <Route
+            path="/exam/:id"
+            element={user ? <Exam /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/quizzes"
+            element={user ? <QuizList /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/create-exam"
+            element={
+              <ProtectedAdminRoute>
+                <CreateExam />
+              </ProtectedAdminRoute>
+            }
+          />
           {/* fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
