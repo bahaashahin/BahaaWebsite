@@ -19,6 +19,7 @@ import {
   FaBullhorn,
   FaLink,
   FaTasks,
+  FaExclamationTriangle,
 } from "react-icons/fa";
 import Message from "../components/Message";
 import useAdmin from "../hooks/useAdmin";
@@ -32,10 +33,17 @@ export default function AdminTasks() {
     description: "",
     deadline: "",
     points: "",
-    formLink: "", // تم إضافة رابط الفورم للمهمة الجديدة هنا 🔥
+    formLink: "",
     type: "task",
   });
   const [message, setMessage] = useState(null);
+
+  // الـ States الخاصة بـ كرت التأكيد المخصص للحذف 🚨
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    taskId: null,
+    taskTitle: "",
+  });
 
   useEffect(() => {
     if (isAdmin) {
@@ -90,18 +98,17 @@ export default function AdminTasks() {
         active: true,
       });
 
-      setMessage({ text: "تم إنشاء المهمة بنجاح", type: "success" });
+      setMessage({ text: "تم إنشاء المهمة بنجاح 🚀", type: "success" });
 
       setNewTask({
         title: "",
         description: "",
         deadline: "",
         points: "",
-        formLink: "", // إعادة تصفير الحقل بعد الإضافة بنجاح
+        formLink: "",
         type: "task",
       });
 
-      // إعادة جلب المهام فقط لتوفير استهلاك البيانات
       const tasksSnap = await getDocs(collection(db, "tasks"));
       setTasks(tasksSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (err) {
@@ -109,14 +116,27 @@ export default function AdminTasks() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("هل أنت متأكد من حذف هذه المهمة نهائياً؟")) return;
+  // فتح كرت التأكيد بدلاً من استخدام window.confirm التقليدي
+  const triggerDeleteConfirm = (id, title) => {
+    setConfirmModal({
+      isOpen: true,
+      taskId: id,
+      taskTitle: title,
+    });
+  };
+
+  // تنفيذ الحذف الفعلي بعد التأكيد المخصص
+  const executeDelete = async () => {
+    const id = confirmModal.taskId;
     try {
       await deleteDoc(doc(db, "tasks", id));
-      setMessage({ text: "تم حذف المهمة بنجاح", type: "info" });
+      setMessage({ text: "تم حذف المهمة بنجاح نهائياً", type: "info" });
       setTasks((prev) => prev.filter((t) => t.id !== id));
     } catch (err) {
-      setMessage({ text: "فشل الحذف", type: "error" });
+      setMessage({ text: "فشل حذف المهمة", type: "error" });
+    } finally {
+      // إغلاق المودال وتصفيره
+      setConfirmModal({ isOpen: false, taskId: null, taskTitle: "" });
     }
   };
 
@@ -124,7 +144,9 @@ export default function AdminTasks() {
     try {
       await updateDoc(doc(db, "tasks", id), { active: !current });
       setMessage({
-        text: current ? "تم إغلاق المهمة بوجه الطلاب" : "تم فتح المهمة للطلاب",
+        text: current
+          ? "تم إغلاق المهمة وحجبها عن الطلاب 🔒"
+          : "تم فتح المهمة للطلاب بنجاح 🎉",
         type: "info",
       });
       setTasks((prev) =>
@@ -144,14 +166,14 @@ export default function AdminTasks() {
         },
         { merge: true },
       );
-      setMessage({ text: "تم تحديث الإعلان العام بنجاح", type: "success" });
+      setMessage({ text: "تم تحديث الإعلان العام بنجاح 📢", type: "success" });
     } catch (err) {
       setMessage({ text: "فشل حفظ الإعدادات", type: "error" });
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-4 sm:p-6 md:p-8 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-4 sm:p-6 md:p-8 text-white relative">
       <div className="max-w-2xl mx-auto space-y-6">
         {/* الهيدر الرئيسي */}
         <div className="flex items-center gap-4 bg-white/5 border border-white/10 p-5 rounded-3xl backdrop-blur-xl">
@@ -212,7 +234,6 @@ export default function AdminTasks() {
               }
             />
 
-            {/* الحقل الجديد المضاف لبناء رابط خاص لكل مهمة على حدة 🔥 */}
             <div className="relative">
               <FaLink className="absolute left-3 top-3.5 text-slate-500 text-xs" />
               <input
@@ -294,7 +315,6 @@ export default function AdminTasks() {
                   {task.description}
                 </p>
 
-                {/* طباعة الرابط لو وجد للتأكد منه إدارياً */}
                 {task.formLink && (
                   <p className="text-xs text-indigo-400 truncate mt-2 flex items-center gap-1.5 bg-indigo-950/30 p-2 rounded-xl border border-indigo-500/10">
                     <FaLink className="text-[10px]" /> Form:{" "}
@@ -302,7 +322,7 @@ export default function AdminTasks() {
                       href={task.formLink}
                       target="_blank"
                       rel="noreferrer"
-                      className="underline"
+                      className="underline text-indigo-300 hover:text-indigo-200"
                     >
                       {task.formLink}
                     </a>
@@ -341,7 +361,7 @@ export default function AdminTasks() {
 
                 <button
                   className="py-2.5 rounded-xl bg-rose-600/10 border border-rose-500/20 text-rose-400 hover:bg-rose-600/20 hover:border-rose-500/40 transition-all flex items-center justify-center gap-1.5"
-                  onClick={() => handleDelete(task.id)}
+                  onClick={() => triggerDeleteConfirm(task.id, task.title)}
                 >
                   <FaTrashAlt className="text-[10px]" /> Delete
                 </button>
@@ -357,6 +377,52 @@ export default function AdminTasks() {
         </div>
       </div>
 
+      {/* ================= PREMIUM CUSTOM CONFIRMATION MODAL ================= */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900/90 border border-white/10 rounded-[2rem] p-6 max-w-sm w-full text-center shadow-2xl space-y-4 backdrop-blur-xl animate-scaleIn">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-400 flex items-center justify-center text-xl mx-auto">
+              <FaExclamationTriangle />
+            </div>
+
+            <div className="space-y-1">
+              <h4 className="text-base font-bold text-white">
+                تأكيد حذف المهمة؟
+              </h4>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                هل أنت متأكد من حذف مهمة{" "}
+                <span className="text-rose-400 font-semibold">
+                  "{confirmModal.taskTitle}"
+                </span>{" "}
+                نهائياً؟ لا يمكن التراجع عن هذا الإجراء.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2 text-xs font-bold">
+              <button
+                className="py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition-colors"
+                onClick={() =>
+                  setConfirmModal({
+                    isOpen: false,
+                    taskId: null,
+                    taskTitle: "",
+                  })
+                }
+              >
+                إلغاء
+              </button>
+              <button
+                className="py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/20 transition-colors"
+                onClick={executeDelete}
+              >
+                نعم، احذف نهائياً
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* رسائل الـ Toast العادية */}
       {message && (
         <Message
           text={message.text}
