@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRef } from "react";
-import html2canvas from "html2canvas";
+import { toPng } from "html-to-image";
 import jsPDF from "jspdf";
 import { auth, db } from "../firebase";
 import { doc, getDoc, collection, getDocs } from "firebase/firestore";
@@ -115,20 +115,43 @@ export default function Dashboard() {
   };
   const certificateRef = useRef(null);
 
-  const downloadCertificate = async (format) => {
-    const element = certificateRef.current;
-    const canvas = await html2canvas(element, { scale: 2 });
-    const data = canvas.toDataURL("image/png");
 
-    if (format === "pdf") {
-      const pdf = new jsPDF("l", "px", [canvas.width, canvas.height]);
-      pdf.addImage(data, "PNG", 0, 0, canvas.width, canvas.height);
-      pdf.save(`Certificate_${student?.Name}.pdf`);
-    } else {
-      const link = document.createElement("a");
-      link.href = data;
-      link.download = `Certificate_${student?.Name}.png`;
-      link.click();
+
+  const downloadCertificate = async (format) => {
+    try {
+      await document.fonts.ready;
+
+      const element = certificateRef.current;
+
+      const dataUrl = await toPng(element, {
+        cacheBust: true,
+        pixelRatio: 4,
+        backgroundColor: null,
+      });
+
+      if (format === "pdf") {
+        const img = new Image();
+
+        img.onload = () => {
+          const pdf = new jsPDF({
+            orientation: "landscape",
+            unit: "px",
+            format: [img.width, img.height],
+          });
+
+          pdf.addImage(dataUrl, "PNG", 0, 0, img.width, img.height);
+          pdf.save(`Certificate_${student?.Name}.pdf`);
+        };
+
+        img.src = dataUrl;
+      } else {
+        const link = document.createElement("a");
+        link.download = `Certificate_${student?.Name}.png`;
+        link.href = dataUrl;
+        link.click();
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -177,75 +200,96 @@ export default function Dashboard() {
 
         {studentPoints >= 200 ? (
           <>
-            {/* الشهادة */}
-            <div
-              ref={certificateRef}
-              className="relative w-full max-w-[800px] aspect-[1.41/1] rounded-xl overflow-hidden bg-white shadow-2xl"
-            >
-              <img
-                src={certificateBg}
-                alt="Certificate Background"
-                className="absolute inset-0 w-full h-full object-cover"
-                draggable={false}
-              />
-              {/* Content */}
-              <div className="absolute inset-0 z-10">
-                {/* Student Name */}
+            {/* Certificate Preview */}
+            <div className="w-full overflow-x-auto flex justify-center py-4">
+              <div
+                ref={certificateRef}
+                className="relative rounded-xl overflow-hidden bg-white shadow-2xl"
+                style={{
+                  width: "800px",
+                  height: "567px",
+                  flexShrink: 0,
+                }}
+              >
+                {/* Background */}
+                <img
+                  src={certificateBg}
+                  alt="Certificate Background"
+                  className="absolute inset-0 w-full h-full object-cover"
+                  draggable={false}
+                />
 
-                <div className="absolute left-1/2 top-[44%] -translate-x-1/2 w-[75%] flex justify-center">
-                  <h2
-                    className="font-black text-center text-white uppercase leading-tight break-words"
+                {/* Content */}
+                <div className="absolute inset-0 z-10">
+                  {/* Student Name */}
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 flex justify-center"
                     style={{
-                      fontSize: "clamp(14px,3.2vw,34px)",
-
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {student?.Name}
-                  </h2>
-                </div>
-
-                {/* Bottom Text */}
-
-                <div className="absolute left-1/2 top-[60%] -translate-x-1/2 w-[78%] text-center">
-                  <p
-                    className="text-white font-medium"
-                    style={{
-                      fontSize: "clamp(7px, 1vw, 15px)",
-
-                      lineHeight: 1.45,
+                      top: "44%",
+                      width: "75%",
+                      background: "linear-gradient(90deg,#e000f4,#1100d6)",
+                      borderRadius: "9999px",
+                      padding: "10px 28px",
+                      display: "inline-flex",
+                      justifyContent: "center",
+                      alignItems: "center",
                     }}
                   >
                     <span
-                      className="block font-bold mt-3"
                       style={{
-                        color: "#b8c5ff",
-
-                        fontSize: "clamp(6px, 0.9vw, 13px)",
-
-                        lineHeight: 1.3,
+                        fontSize: "28px",
+                        fontWeight: 700,
+                        color: "#fff",
+                        lineHeight: 1,
                       }}
                     >
-                      {myRank === 1
-                        ? " You Are The Best Student In This Level!"
-                        : "I wish him success."}
+                      {student?.Name}
                     </span>
-                    has successfully completed the
-                    <br />
-                    <span className="font-semibold">
-                      "Level 1 HTML, CSS, Tailwind CSS"
-                    </span>
-                    <br />
-                    presented by Bahaa Shaheen
-                    <br />
-                    I wish him success in his future endeavors.
-                    <br />
-                  </p>
+                  </div>
+
+                  {/* Bottom Text */}
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 text-center"
+                    style={{
+                      top: "60%",
+                      width: "78%",
+                    }}
+                  >
+                    <p
+                      className="text-white font-medium"
+                      style={{
+                        fontSize: "13px",
+                        lineHeight: "1.45",
+                      }}
+                    >
+                      <span
+                        className="block font-bold mb-3"
+                        style={{
+                          color: "#b8c5ff",
+                          fontSize: "12px",
+                        }}
+                      >
+                        {myRank === 1
+                          ? "🌟 Congratulations! You have been recognized as the Top Student of Level 1."
+                          : "I wish you continued success."}
+                      </span>
+                      has successfully completed the
+                      <br />
+                      <span className="font-semibold">
+                        "Level 1 HTML, CSS, Tailwind CSS"
+                      </span>
+                      <br />
+                      presented by Bahaa Shaheen
+                      <br />
+                      We wish you continued success in all your future
+                      endeavors.
+                    </p>
+                  </div>
                 </div>
-              </div>{" "}
+              </div>
             </div>
 
-            {/* أزرار التحميل */}
+            {/* Buttons */}
             <div className="flex flex-wrap justify-center gap-4 mt-6">
               <button
                 onClick={() => downloadCertificate("png")}
@@ -263,6 +307,8 @@ export default function Dashboard() {
             </div>
           </>
         ) : (
+          // الكود الخاص بـ Certificate Locked كما هو
+
           <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-6 text-center">
             <h3 className="text-xl font-bold text-yellow-400">
               Certificate Locked 🔒
@@ -279,8 +325,6 @@ export default function Dashboard() {
             </p>
           </div>
         )}
-
-        
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-600/20 to-indigo-900/10 border border-indigo-500/20 shadow-xl flex justify-between items-center group hover:border-indigo-500/40 transition-all duration-300">
