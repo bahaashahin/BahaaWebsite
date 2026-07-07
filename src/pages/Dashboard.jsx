@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { useRef } from "react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import { auth, db } from "../firebase";
 import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import {
@@ -10,6 +13,7 @@ import {
   FaMedal,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import certificateBg from "../assets/CateRef.png";
 
 export default function Dashboard() {
   const [student, setStudent] = useState(null);
@@ -109,6 +113,24 @@ export default function Dashboard() {
       (user.points.bonus || 0)
     );
   };
+  const certificateRef = useRef(null);
+
+  const downloadCertificate = async (format) => {
+    const element = certificateRef.current;
+    const canvas = await html2canvas(element, { scale: 2 });
+    const data = canvas.toDataURL("image/png");
+
+    if (format === "pdf") {
+      const pdf = new jsPDF("l", "px", [canvas.width, canvas.height]);
+      pdf.addImage(data, "PNG", 0, 0, canvas.width, canvas.height);
+      pdf.save(`Certificate_${student?.Name}.pdf`);
+    } else {
+      const link = document.createElement("a");
+      link.href = data;
+      link.download = `Certificate_${student?.Name}.png`;
+      link.click();
+    }
+  };
 
   if (loading) return <SkeletonLoader />;
 
@@ -153,9 +175,114 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* كروت الإحصائيات السريعة (تظهر تحت بعض في الموبايل، وجنب بعض بدءاً من الشاشات المتوسطة) */}
+        {studentPoints >= 200 ? (
+          <>
+            {/* الشهادة */}
+            <div
+              ref={certificateRef}
+              className="relative w-full max-w-[800px] aspect-[1.41/1] rounded-xl overflow-hidden bg-white shadow-2xl"
+            >
+              <img
+                src={certificateBg}
+                alt="Certificate Background"
+                className="absolute inset-0 w-full h-full object-cover"
+                draggable={false}
+              />
+              {/* Content */}
+              <div className="absolute inset-0 z-10">
+                {/* Student Name */}
+
+                <div className="absolute left-1/2 top-[44%] -translate-x-1/2 w-[75%] flex justify-center">
+                  <h2
+                    className="font-black text-center text-white uppercase leading-tight break-words"
+                    style={{
+                      fontSize: "clamp(14px,3.2vw,34px)",
+
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {student?.Name}
+                  </h2>
+                </div>
+
+                {/* Bottom Text */}
+
+                <div className="absolute left-1/2 top-[60%] -translate-x-1/2 w-[78%] text-center">
+                  <p
+                    className="text-white font-medium"
+                    style={{
+                      fontSize: "clamp(7px, 1vw, 15px)",
+
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    <span
+                      className="block font-bold mt-3"
+                      style={{
+                        color: "#b8c5ff",
+
+                        fontSize: "clamp(6px, 0.9vw, 13px)",
+
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {myRank === 1
+                        ? " You Are The Best Student In This Level!"
+                        : "I wish him success."}
+                    </span>
+                    has successfully completed the
+                    <br />
+                    <span className="font-semibold">
+                      "Level 1 HTML, CSS, Tailwind CSS"
+                    </span>
+                    <br />
+                    presented by Bahaa Shaheen
+                    <br />
+                    I wish him success in his future endeavors.
+                    <br />
+                  </p>
+                </div>
+              </div>{" "}
+            </div>
+
+            {/* أزرار التحميل */}
+            <div className="flex flex-wrap justify-center gap-4 mt-6">
+              <button
+                onClick={() => downloadCertificate("png")}
+                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition"
+              >
+                Download PNG
+              </button>
+
+              <button
+                onClick={() => downloadCertificate("pdf")}
+                className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold transition"
+              >
+                Download PDF
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-6 text-center">
+            <h3 className="text-xl font-bold text-yellow-400">
+              Certificate Locked 🔒
+            </h3>
+
+            <p className="text-gray-300 mt-2">
+              You need at least{" "}
+              <span className="font-bold text-white">200 points</span> to unlock
+              your certificate.
+            </p>
+
+            <p className="mt-3 text-lg font-bold text-indigo-400">
+              Your Score: {studentPoints} / 200
+            </p>
+          </div>
+        )}
+
+        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* كارت مجموع النقاط */}
           <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-600/20 to-indigo-900/10 border border-indigo-500/20 shadow-xl flex justify-between items-center group hover:border-indigo-500/40 transition-all duration-300">
             <div>
               <p className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
@@ -171,7 +298,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* كارت ترتيب الطالب الحالي */}
           <div className="p-5 rounded-3xl bg-gradient-to-br from-purple-600/20 to-purple-900/10 border border-purple-500/20 shadow-xl flex justify-between items-center group hover:border-purple-500/40 transition-all duration-300">
             <div>
               <p className="text-xs font-semibold text-purple-400 uppercase tracking-wider">
@@ -189,7 +315,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* كارت الطالب الأول */}
           {topStudent && (
             <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/10 to-amber-900/5 border border-amber-500/20 shadow-xl flex justify-between items-center group hover:border-amber-500/40 transition-all duration-300 sm:col-span-2 lg:col-span-1">
               <div className="min-w-0 flex-1">
@@ -210,9 +335,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* الجلسات والترتيب - تم إصلاح ريسبونسيف هذه المنطقة بالكامل */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-          {/* قسم الـ Sessions Progress */}
           <div className="md:col-span-3 bg-white/5 border border-white/10 p-5 sm:p-6 rounded-3xl backdrop-blur-xl h-fit">
             <h2 className="text-base sm:text-lg font-bold mb-4 flex items-center gap-2">
               <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
@@ -274,7 +397,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* قسم الـ Ranking */}
           <div className="md:col-span-2 bg-white/5 border border-white/10 p-5 sm:p-6 rounded-3xl backdrop-blur-xl h-fit">
             <h2 className="text-base sm:text-lg font-bold mb-4 text-center border-b border-white/10 pb-3">
               🏆 Global Ranking

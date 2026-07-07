@@ -118,38 +118,40 @@ export default function Login() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4">
+    <div className="flex flex-col items-center justify-center min-h-screen relative overflow-hidden bg-slate-950 px-4">
       {/* Background */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
-        <span className="absolute w-72 h-72 bg-blue-500/10 rounded-full -top-20 -left-20 blur-3xl animate-pulse"></span>
-        <span className="absolute w-96 h-96 bg-indigo-500/10 rounded-full -bottom-32 -right-32 blur-3xl animate-pulse"></span>
+        <div className="absolute w-[500px] h-[500px] bg-blue-600/20 rounded-full -top-40 -left-40 blur-[120px]"></div>
+        <div className="absolute w-[500px] h-[500px] bg-indigo-600/20 rounded-full -bottom-40 -right-40 blur-[120px]"></div>
       </div>
 
       {/* Card */}
-      <div className="relative bg-black/40 backdrop-blur-md border border-white/10 p-8 md:p-10 rounded-3xl shadow-2xl w-full max-w-sm z-10 transition-all duration-500 hover:scale-[1.01]">
-        <h2 className="text-3xl font-bold mb-8 text-center text-white">
-          Student Login
+      <div className="relative bg-slate-900/50 backdrop-blur-xl border border-white/10 p-8 md:p-10 rounded-[2rem] shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] w-full max-w-sm z-10">
+        <h2 className="text-3xl font-extrabold mb-8 text-center text-white tracking-tight">
+          Welcome Back
         </h2>
 
         {/* Email */}
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="w-full p-3 bg-white/10 text-white border border-white/10 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-400"
-          placeholder="Email"
-          autoComplete="email"
-        />
+        <div className="mb-4">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="w-full p-4 bg-slate-950/50 text-white border border-white/5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder-gray-500"
+            placeholder="Email Address"
+            autoComplete="email"
+          />
+        </div>
 
         {/* Password */}
-        <div className="relative mb-6">
+        <div className="relative mb-8">
           <input
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="w-full p-3 pr-12 bg-white/10 text-white border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-400"
+            className="w-full p-4 pr-16 bg-slate-950/50 text-white border border-white/5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder-gray-500"
             placeholder="Password"
             autoComplete="current-password"
           />
@@ -157,19 +159,19 @@ export default function Login() {
           <button
             type="button"
             onClick={() => setShowPassword((prev) => !prev)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-300 hover:text-white"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors"
           >
-            {showPassword ? "إخفاء" : "إظهار"}
+            {showPassword ? "HIDE" : "SHOW"}
           </button>
         </div>
 
         {/* Login Button */}
         <button
-          className="w-full bg-gradient-to-r from-indigo-700 to-blue-700 text-white p-3 rounded-xl mb-4 hover:from-indigo-800 hover:to-blue-800 transition-all duration-300 disabled:opacity-60"
+          className="w-full bg-blue-600 text-white p-4 rounded-2xl mb-6 hover:bg-blue-500 active:scale-[0.98] transition-all duration-300 font-semibold shadow-lg shadow-blue-900/20 disabled:opacity-50"
           onClick={handleLogin}
           disabled={loading}
         >
-          {loading ? "جاري تسجيل الدخول..." : "Login"}
+          {loading ? "AUTHENTICATING..." : "LOGIN"}
         </button>
 
         {/* Forgot Password */}
@@ -196,23 +198,16 @@ export default function Login() {
           </span>
         </p> */}
 
-        {/* <button
-          className="w-full bg-gradient-to-r from-blue-700 to-indigo-700 text-white p-3 rounded-xl hover:from-blue-800 hover:to-indigo-800 transition-all duration-300"
-          onClick={() => navigate("/register")}
-        >
-          Register
-        </button> */}
-
         {/* Error Message */}
         {error && (
-          <div className="mt-4 p-3 bg-red-600/90 text-white border border-red-700 rounded-xl text-center text-sm">
+          <div className="mt-4 p-3 bg-red-500/10 text-red-400 border border-red-500/20 rounded-2xl text-center text-sm">
             {error}
           </div>
         )}
 
         {/* Success Message */}
         {info && (
-          <div className="mt-4 p-3 bg-green-600/90 text-white border border-green-700 rounded-xl text-center text-sm">
+          <div className="mt-4 p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-2xl text-center text-sm">
             {info}
           </div>
         )}
