@@ -1,24 +1,37 @@
 import { useEffect, useState } from "react";
 import { db } from "../firebase";
-import { doc, getDocs, collection, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  getDocs,
+  collection,
+  updateDoc,
+  deleteDoc,
+} from "firebase/firestore";
 import {
   FaCrown,
   FaMedal,
   FaSearch,
   FaGraduationCap,
-  FaPlus,
-  FaEdit,
   FaCheck,
-  FaTimes,
+  FaTrash,
+  FaEnvelope,
+  FaBirthdayCake,
+  FaEdit,
 } from "react-icons/fa";
 import Message from "../components/Message";
 import useAdmin from "../hooks/useAdmin";
 
 function SkeletonLoader() {
   return (
-    <div className="min-h-screen bg-[#020617] p-8 flex flex-col items-center justify-center space-y-6 animate-pulse">
-      <div className="w-full max-w-3xl h-24 bg-white/5 rounded-3xl" />
-      <div className="w-full max-w-3xl h-16 bg-white/5 rounded-2xl" />
+    <div className="min-h-screen bg-slate-950 p-6 animate-pulse">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="h-32 bg-slate-900 rounded-3xl" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="h-48 bg-slate-900 rounded-3xl" />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -29,7 +42,16 @@ export default function AdminPoints() {
   const [message, setMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [inputValues, setInputValues] = useState({});
-  const [editingId, setEditingId] = useState(null);
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    studentId: null,
+    name: "",
+  });
+  const [editModal, setEditModal] = useState({
+    isOpen: false,
+    studentId: null,
+    name: "",
+  });
   const [newName, setNewName] = useState("");
   const { isAdmin, loading: adminLoading } = useAdmin();
 
@@ -46,8 +68,8 @@ export default function AdminPoints() {
         return { id: d.id, ...data, totalPoints };
       });
       setStudents(allStudents.sort((a, b) => b.totalPoints - a.totalPoints));
-    } catch (error) {
-      setMessage({ text: "Failed to load data", type: "error" });
+    } catch {
+      setMessage({ text: "Failed to load students", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -58,17 +80,33 @@ export default function AdminPoints() {
     else if (!adminLoading) setLoading(false);
   }, [isAdmin, adminLoading]);
 
-  const handleRename = async (id) => {
-    if (!newName.trim()) return;
+  const handleDelete = async () => {
     try {
-      await updateDoc(doc(db, "students", id), { Name: newName });
-      setStudents((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, Name: newName } : s)),
+      await deleteDoc(doc(db, "students", deleteModal.studentId));
+      setStudents((prev) => prev.filter((s) => s.id !== deleteModal.studentId));
+      setMessage({ text: "Student deleted successfully", type: "success" });
+    } catch {
+      setMessage({ text: "Failed to delete student", type: "error" });
+    } finally {
+      setDeleteModal({ isOpen: false, studentId: null, name: "" });
+    }
+  };
+
+  const handleUpdateName = async () => {
+    try {
+      await updateDoc(doc(db, "students", editModal.studentId), {
+        Name: newName,
+      });
+      setStudents(
+        students.map((s) =>
+          s.id === editModal.studentId ? { ...s, Name: newName } : s,
+        ),
       );
-      setEditingId(null);
       setMessage({ text: "Name updated successfully", type: "success" });
     } catch {
       setMessage({ text: "Failed to update name", type: "error" });
+    } finally {
+      setEditModal({ isOpen: false, studentId: null, name: "" });
     }
   };
 
@@ -80,7 +118,6 @@ export default function AdminPoints() {
       ...student.points,
       bonus: (student.points?.bonus || 0) + addedPoints,
     };
-
     try {
       await updateDoc(doc(db, "students", id), { points: newPoints });
       setStudents((prev) =>
@@ -97,139 +134,181 @@ export default function AdminPoints() {
           .sort((a, b) => b.totalPoints - a.totalPoints),
       );
       setInputValues((prev) => ({ ...prev, [id]: "" }));
-      setMessage({ text: "Points added successfully", type: "success" });
+      setMessage({ text: "Points updated successfully", type: "success" });
     } catch {
-      setMessage({ text: "Server error", type: "error" });
+      setMessage({ text: "Server error occurred", type: "error" });
     }
-  };
-
-  const getRankBadge = (index) => {
-    const colors = [
-      "bg-amber-500/20 text-amber-400",
-      "bg-slate-300/20 text-slate-300",
-      "bg-amber-700/20 text-amber-700",
-    ];
-    if (index < 3)
-      return (
-        <div
-          className={`w-10 h-10 rounded-xl flex items-center justify-center border border-current ${colors[index]}`}
-        >
-          {index === 0 ? <FaCrown /> : <FaMedal />}
-        </div>
-      );
-    return (
-      <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-xs font-mono text-slate-400">
-        #{index + 1}
-      </div>
-    );
   };
 
   if (loading || adminLoading) return <SkeletonLoader />;
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white p-4 sm:p-8">
-      <div className="max-w-3xl mx-auto space-y-8">
-        <div className="bg-gradient-to-r from-indigo-900/50 to-slate-900/50 border border-white/10 p-6 rounded-3xl backdrop-blur-xl">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-indigo-500 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/20">
-              <FaGraduationCap />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Points Management</h1>
-              <p className="text-slate-400 text-sm">Admin Control Panel</p>
-            </div>
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto">
+        <header className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 mb-8 backdrop-blur flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+              Management Panel
+            </h1>
+            <p className="text-slate-400 mt-1">
+              Control student points, accounts, and details
+            </p>
           </div>
-        </div>
+          <div className="p-4 bg-indigo-500/10 rounded-2xl text-indigo-400">
+            <FaGraduationCap size={30} />
+          </div>
+        </header>
 
-        <div className="relative">
+        <div className="relative mb-8">
           <FaSearch className="absolute left-4 top-4 text-slate-500" />
           <input
             type="text"
-            placeholder="Search for a student..."
-            className="w-full p-4 pl-12 rounded-2xl bg-slate-900 border border-white/10 focus:border-indigo-500 outline-none transition-all"
-            value={searchQuery}
+            placeholder="Search by name or email..."
+            className="w-full p-4 pl-12 rounded-2xl bg-slate-900 border border-slate-800 focus:border-indigo-500 outline-none transition-all"
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {students
-            .filter((s) =>
-              s.Name?.toLowerCase().includes(searchQuery.toLowerCase()),
+            .filter(
+              (s) =>
+                s.Name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                s.Email?.toLowerCase().includes(searchQuery.toLowerCase()),
             )
             .map((s, i) => (
               <div
                 key={s.id}
-                className="bg-slate-900/40 border border-white/5 p-6 rounded-3xl hover:border-indigo-500/30 transition-all"
+                className="bg-slate-900 border border-slate-800 p-6 rounded-3xl flex flex-col justify-between hover:border-indigo-500/50 transition-all shadow-lg"
               >
-                <div className="flex flex-col sm:flex-row justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    {getRankBadge(i)}
-                    {editingId === s.id ? (
-                      <div className="flex gap-2">
-                        <input
-                          className="bg-black p-2 rounded-lg border border-indigo-500 outline-none"
-                          value={newName}
-                          onChange={(e) => setNewName(e.target.value)}
-                        />
-                        <button
-                          onClick={() => handleRename(s.id)}
-                          className="text-green-500"
-                        >
-                          <FaCheck />
-                        </button>
-                        <button
-                          onClick={() => setEditingId(null)}
-                          className="text-red-500"
-                        >
-                          <FaTimes />
-                        </button>
-                      </div>
+                <div className="flex justify-between items-start mb-4">
+                  <div
+                    className={`p-3 rounded-2xl ${i < 3 ? "bg-indigo-500/20 text-indigo-400" : "bg-slate-800"}`}
+                  >
+                    {i === 0 ? (
+                      <FaCrown size={20} />
+                    ) : i < 3 ? (
+                      <FaMedal size={20} />
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-lg">{s.Name}</h3>
-                        <button
-                          onClick={() => {
-                            setEditingId(s.id);
-                            setNewName(s.Name);
-                          }}
-                          className="text-slate-500 hover:text-indigo-400"
-                        >
-                          <FaEdit />
-                        </button>
-                      </div>
+                      <span className="font-bold">#{i + 1}</span>
                     )}
                   </div>
-                  <div className="bg-indigo-600/20 px-4 py-2 rounded-xl border border-indigo-500/20 text-center">
-                    <span className="text-indigo-400 font-black text-xl">
-                      {s.totalPoints}
-                    </span>
-                  </div>
+                  <span className="text-2xl font-bold text-indigo-400 font-mono">
+                    {s.totalPoints} pts
+                  </span>
                 </div>
-                <div className="mt-6 flex gap-2 bg-black/20 p-2 rounded-2xl">
+                <div className="mb-6">
+                  <h3 className="font-bold text-xl mb-1">{s.Name}</h3>
+                  <p className="text-slate-400 text-sm flex items-center gap-2">
+                    <FaEnvelope size={10} /> {s.Email || "No Email"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 mt-auto border-t border-slate-800 pt-4">
                   <input
                     type="number"
-                    placeholder="Bonus points..."
-                    className="flex-1 bg-transparent p-2 outline-none text-sm px-4"
+                    placeholder="Bonus"
+                    className="w-full bg-slate-950 border border-slate-800 p-2 rounded-xl text-center outline-none focus:border-indigo-500"
                     value={inputValues[s.id] || ""}
                     onChange={(e) =>
-                      setInputValues((prev) => ({
-                        ...prev,
-                        [s.id]: e.target.value,
-                      }))
+                      setInputValues({ ...inputValues, [s.id]: e.target.value })
                     }
                   />
                   <button
                     onClick={() => handleAddPoints(s.id)}
-                    className="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all"
+                    className="p-3 bg-indigo-600 rounded-xl hover:bg-indigo-500 transition-colors"
                   >
-                    <FaPlus /> Save
+                    <FaCheck />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditModal({
+                        isOpen: true,
+                        studentId: s.id,
+                        name: s.Name,
+                      });
+                      setNewName(s.Name);
+                    }}
+                    className="p-3 bg-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-500 hover:text-white transition-colors"
+                  >
+                    <FaEdit />
+                  </button>
+                  <button
+                    onClick={() =>
+                      setDeleteModal({
+                        isOpen: true,
+                        studentId: s.id,
+                        name: s.Name,
+                      })
+                    }
+                    className="p-3 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-colors"
+                  >
+                    <FaTrash />
                   </button>
                 </div>
               </div>
             ))}
         </div>
       </div>
+
+      {editModal.isOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-sm w-full">
+            <h3 className="text-xl font-bold mb-4">Edit Name</h3>
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="w-full p-3 mb-4 rounded-xl bg-slate-950 border border-slate-700 outline-none focus:border-indigo-500"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setEditModal({ isOpen: false })}
+                className="flex-1 p-3 rounded-xl bg-slate-800 hover:bg-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateName}
+                className="flex-1 p-3 rounded-xl bg-indigo-600 hover:bg-indigo-500"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-sm w-full">
+            <h3 className="text-xl font-bold mb-2">Delete Student</h3>
+            <p className="text-slate-400 mb-6">
+              Are you sure you want to remove{" "}
+              <span className="text-white font-semibold">
+                {deleteModal.name}
+              </span>
+              ?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() =>
+                  setDeleteModal({ isOpen: false, studentId: null, name: "" })
+                }
+                className="flex-1 p-3 rounded-xl bg-slate-800 hover:bg-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 p-3 rounded-xl bg-red-600 hover:bg-red-500"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {message && (
         <Message
           text={message.text}
