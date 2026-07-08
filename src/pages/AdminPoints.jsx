@@ -15,20 +15,24 @@ import {
   FaCheck,
   FaTrash,
   FaEnvelope,
-  FaBirthdayCake,
   FaEdit,
+  FaExclamationTriangle,
 } from "react-icons/fa";
 import Message from "../components/Message";
 import useAdmin from "../hooks/useAdmin";
 
 function SkeletonLoader() {
   return (
-    <div className="min-h-screen bg-slate-950 p-6 animate-pulse">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="h-32 bg-slate-900 rounded-3xl" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[1, 2, 3].map((n) => (
-            <div key={n} className="h-48 bg-slate-900 rounded-3xl" />
+    <div className="min-h-screen bg-[#0B0F19] p-6 animate-pulse">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div className="h-36 bg-slate-800/50 rounded-3xl border border-slate-700/30" />
+        <div className="h-16 max-w-2xl bg-slate-800/50 rounded-2xl border border-slate-700/30" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((n) => (
+            <div
+              key={n}
+              className="h-64 bg-slate-800/40 rounded-3xl border border-slate-700/30"
+            />
           ))}
         </div>
       </div>
@@ -143,33 +147,40 @@ export default function AdminPoints() {
   if (loading || adminLoading) return <SkeletonLoader />;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
-        <header className="bg-slate-900/50 p-8 rounded-3xl border border-slate-800 mb-8 backdrop-blur flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+    <div className="min-h-screen bg-[#0B0F19] text-slate-100 p-4 md:p-8 font-sans selection:bg-indigo-500/30">
+      <div className="max-w-7xl mx-auto">
+        {/* Header Section */}
+        <header className="bg-slate-900/40 p-8 rounded-3xl border border-slate-700/50 mb-10 backdrop-blur-xl shadow-2xl shadow-indigo-500/5 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -z-10 transform translate-x-1/2 -translate-y-1/2" />
+
+          <div className="z-10">
+            <h1 className="text-4xl font-extrabold bg-gradient-to-r from-white via-indigo-200 to-indigo-400 bg-clip-text text-transparent tracking-tight mb-2">
               Management Panel
             </h1>
-            <p className="text-slate-400 mt-1">
-              Control student points, accounts, and details
+            <p className="text-slate-400 text-sm md:text-base font-medium">
+              Monitor and control student points, accounts, and performance.
             </p>
           </div>
-          <div className="p-4 bg-indigo-500/10 rounded-2xl text-indigo-400">
-            <FaGraduationCap size={30} />
+          <div className="p-5 bg-indigo-500/10 rounded-2xl text-indigo-400 border border-indigo-500/20 shadow-inner z-10 hidden md:block">
+            <FaGraduationCap size={36} />
           </div>
         </header>
 
-        <div className="relative mb-8">
-          <FaSearch className="absolute left-4 top-4 text-slate-500" />
+        {/* Search Bar */}
+        <div className="relative mb-10 max-w-2xl group">
+          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none transition-colors duration-300 group-focus-within:text-indigo-400 text-slate-500">
+            <FaSearch size={18} />
+          </div>
           <input
             type="text"
-            placeholder="Search by name or email..."
-            className="w-full p-4 pl-12 rounded-2xl bg-slate-900 border border-slate-800 focus:border-indigo-500 outline-none transition-all"
+            placeholder="Search by student name or email..."
+            className="w-full py-4 pl-14 pr-6 rounded-2xl bg-slate-900/50 border border-slate-700/50 text-slate-200 placeholder-slate-500 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all backdrop-blur-sm shadow-lg shadow-black/20"
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Students Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {students
             .filter(
               (s) =>
@@ -179,142 +190,209 @@ export default function AdminPoints() {
             .map((s, i) => (
               <div
                 key={s.id}
-                className="bg-slate-900 border border-slate-800 p-6 rounded-3xl flex flex-col justify-between hover:border-indigo-500/50 transition-all shadow-lg"
+                className="group bg-slate-900/40 border border-slate-700/50 p-6 rounded-3xl flex flex-col justify-between hover:border-indigo-500/50 hover:bg-slate-800/40 transition-all duration-300 shadow-xl shadow-black/20 hover:shadow-indigo-500/10 backdrop-blur-md relative overflow-hidden"
               >
-                <div className="flex justify-between items-start mb-4">
+                {/* Rank Badge & Points */}
+                <div className="flex justify-between items-center mb-6">
                   <div
-                    className={`p-3 rounded-2xl ${i < 3 ? "bg-indigo-500/20 text-indigo-400" : "bg-slate-800"}`}
+                    className={`flex items-center justify-center w-12 h-12 rounded-2xl shadow-inner transition-transform duration-300 group-hover:scale-105 ${
+                      i === 0
+                        ? "bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 text-yellow-400 border border-yellow-400/30"
+                        : i < 3
+                          ? "bg-gradient-to-br from-indigo-400/20 to-indigo-600/20 text-indigo-400 border border-indigo-400/30"
+                          : "bg-slate-800/80 text-slate-400 border border-slate-700"
+                    }`}
                   >
                     {i === 0 ? (
-                      <FaCrown size={20} />
+                      <FaCrown size={22} />
                     ) : i < 3 ? (
-                      <FaMedal size={20} />
+                      <FaMedal size={22} />
                     ) : (
-                      <span className="font-bold">#{i + 1}</span>
+                      <span className="font-bold text-lg">#{i + 1}</span>
                     )}
                   </div>
-                  <span className="text-2xl font-bold text-indigo-400 font-mono">
-                    {s.totalPoints} pts
-                  </span>
+                  <div className="text-right">
+                    <span className="block text-3xl font-black text-white tracking-tight">
+                      {s.totalPoints}
+                    </span>
+                    <span className="text-xs text-indigo-400 font-bold uppercase tracking-wider">
+                      Points
+                    </span>
+                  </div>
                 </div>
-                <div className="mb-6">
-                  <h3 className="font-bold text-xl mb-1">{s.Name}</h3>
-                  <p className="text-slate-400 text-sm flex items-center gap-2">
-                    <FaEnvelope size={10} /> {s.Email || "No Email"}
-                  </p>
+
+                {/* Student Info */}
+                <div className="mb-8">
+                  <h3
+                    className="font-bold text-xl text-slate-100 mb-2 truncate"
+                    title={s.Name}
+                  >
+                    {s.Name}
+                  </h3>
+                  <div className="flex items-center gap-2 text-slate-400 text-sm">
+                    <FaEnvelope className="text-slate-500 shrink-0" size={12} />
+                    <span className="truncate">
+                      {s.Email || "No Email Provided"}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 mt-auto border-t border-slate-800 pt-4">
-                  <input
-                    type="number"
-                    placeholder="Bonus"
-                    className="w-full bg-slate-950 border border-slate-800 p-2 rounded-xl text-center outline-none focus:border-indigo-500"
-                    value={inputValues[s.id] || ""}
-                    onChange={(e) =>
-                      setInputValues({ ...inputValues, [s.id]: e.target.value })
-                    }
-                  />
-                  <button
-                    onClick={() => handleAddPoints(s.id)}
-                    className="p-3 bg-indigo-600 rounded-xl hover:bg-indigo-500 transition-colors"
-                  >
-                    <FaCheck />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditModal({
-                        isOpen: true,
-                        studentId: s.id,
-                        name: s.Name,
-                      });
-                      setNewName(s.Name);
-                    }}
-                    className="p-3 bg-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-500 hover:text-white transition-colors"
-                  >
-                    <FaEdit />
-                  </button>
-                  <button
-                    onClick={() =>
-                      setDeleteModal({
-                        isOpen: true,
-                        studentId: s.id,
-                        name: s.Name,
-                      })
-                    }
-                    className="p-3 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-colors"
-                  >
-                    <FaTrash />
-                  </button>
+
+                {/* Actions */}
+                <div className="mt-auto space-y-4">
+                  {/* Points Input Group */}
+                  <div className="flex items-center gap-2 bg-slate-950/50 p-1.5 rounded-2xl border border-slate-800 focus-within:border-indigo-500/50 transition-colors">
+                    <input
+                      type="number"
+                      placeholder="+ Bonus"
+                      className="w-full bg-transparent p-2 text-sm text-center outline-none text-slate-200 placeholder-slate-600 font-medium"
+                      value={inputValues[s.id] || ""}
+                      onChange={(e) =>
+                        setInputValues({
+                          ...inputValues,
+                          [s.id]: e.target.value,
+                        })
+                      }
+                    />
+                    <button
+                      onClick={() => handleAddPoints(s.id)}
+                      className="p-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50"
+                      title="Add Points"
+                    >
+                      <FaCheck size={14} />
+                    </button>
+                  </div>
+
+                  {/* Edit & Delete Actions */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setEditModal({
+                          isOpen: true,
+                          studentId: s.id,
+                          name: s.Name,
+                        });
+                        setNewName(s.Name);
+                      }}
+                      className="flex-1 flex justify-center items-center gap-2 p-3 bg-slate-800/50 hover:bg-blue-500/10 text-slate-300 hover:text-blue-400 border border-slate-700/50 hover:border-blue-500/30 rounded-xl transition-all text-sm font-medium active:scale-95"
+                    >
+                      <FaEdit /> Edit
+                    </button>
+                    <button
+                      onClick={() =>
+                        setDeleteModal({
+                          isOpen: true,
+                          studentId: s.id,
+                          name: s.Name,
+                        })
+                      }
+                      className="flex-1 flex justify-center items-center gap-2 p-3 bg-slate-800/50 hover:bg-red-500/10 text-slate-300 hover:text-red-400 border border-slate-700/50 hover:border-red-500/30 rounded-xl transition-all text-sm font-medium active:scale-95"
+                    >
+                      <FaTrash /> Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
         </div>
       </div>
 
+      {/* Edit Modal */}
       {editModal.isOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-sm w-full">
-            <h3 className="text-xl font-bold mb-4">Edit Name</h3>
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="w-full p-3 mb-4 rounded-xl bg-slate-950 border border-slate-700 outline-none focus:border-indigo-500"
-            />
-            <div className="flex gap-3">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 p-8 rounded-[2rem] max-w-md w-full shadow-2xl shadow-black">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl">
+                <FaEdit size={20} />
+              </div>
+              <h3 className="text-2xl font-bold text-white">
+                Edit Student Name
+              </h3>
+            </div>
+
+            <div className="mb-8">
+              <label className="block text-sm font-medium text-slate-400 mb-2">
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="w-full p-4 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                placeholder="Enter new name..."
+              />
+            </div>
+
+            <div className="flex gap-4">
               <button
                 onClick={() => setEditModal({ isOpen: false })}
-                className="flex-1 p-3 rounded-xl bg-slate-800 hover:bg-slate-700"
+                className="flex-1 p-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleUpdateName}
-                className="flex-1 p-3 rounded-xl bg-indigo-600 hover:bg-indigo-500"
+                className="flex-1 p-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-lg shadow-blue-500/20 transition-all active:scale-95"
               >
-                Save
+                Save Changes
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Delete Modal */}
       {deleteModal.isOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-sm w-full">
-            <h3 className="text-xl font-bold mb-2">Delete Student</h3>
-            <p className="text-slate-400 mb-6">
-              Are you sure you want to remove{" "}
-              <span className="text-white font-semibold">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-red-500/20 p-8 rounded-[2rem] max-w-md w-full shadow-2xl shadow-black relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-red-500 to-pink-500" />
+
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-4 bg-red-500/10 text-red-500 rounded-2xl">
+                <FaExclamationTriangle size={24} />
+              </div>
+              <h3 className="text-2xl font-bold text-white">Delete Student</h3>
+            </div>
+
+            <p className="text-slate-400 mb-8 leading-relaxed">
+              Are you absolutely sure you want to remove <br />
+              <span className="text-white font-bold text-lg inline-block mt-2 px-3 py-1 bg-slate-800 rounded-lg">
                 {deleteModal.name}
               </span>
-              ?
+              <br />
+              <span className="text-red-400 text-sm mt-4 block">
+                This action cannot be undone.
+              </span>
             </p>
-            <div className="flex gap-3">
+
+            <div className="flex gap-4">
               <button
                 onClick={() =>
                   setDeleteModal({ isOpen: false, studentId: null, name: "" })
                 }
-                className="flex-1 p-3 rounded-xl bg-slate-800 hover:bg-slate-700"
+                className="flex-1 p-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
-                className="flex-1 p-3 rounded-xl bg-red-600 hover:bg-red-500"
+                className="flex-1 p-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold shadow-lg shadow-red-500/20 transition-all active:scale-95"
               >
-                Delete
+                Yes, Delete
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Toast Messages */}
       {message && (
-        <Message
-          text={message.text}
-          type={message.type}
-          onClose={() => setMessage(null)}
-        />
+        <div className="fixed bottom-8 right-8 z-50 animate-in slide-in-from-bottom-5">
+          <Message
+            text={message.text}
+            type={message.type}
+            onClose={() => setMessage(null)}
+          />
+        </div>
       )}
     </div>
   );
