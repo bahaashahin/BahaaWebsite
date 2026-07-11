@@ -3,12 +3,15 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import Testimonials from "../components/Testimonials";
+import WallOfFame from "../components/WallOfFame";
+
 import {
   FaArrowRight,
   FaRocket,
   FaGraduationCap,
   FaUsers,
 } from "react-icons/fa";
+
 import heroImage from "../assets/bahaaa.png";
 import logo1 from "../assets/css.svg";
 import logo2 from "../assets/js.svg";
@@ -32,7 +35,6 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
-  // مضاعفة المصفوفة لضمان حركة مستمرة ولانهائية بدون فراغات في الـ Marquee
   const logos = [
     logo7,
     logo1,
@@ -51,14 +53,12 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen text-white relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 font-sans">
+    <div className="min-h-screen text-white relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 font-sans md:ml-4">
       {/* ================= BACKGROUND EFFECTS ================= */}
-      <div className="absolute inset-0 -z-10 overflow-hidden">
+      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
         <div className="absolute w-[300px] sm:w-[500px] h-[300px] sm:h-[500px] bg-blue-500/10 blur-[100px] sm:blur-[140px] -top-20 -left-20 animate-pulse duration-10000" />
         <div className="absolute w-[300px] sm:w-[500px] h-[300px] sm:h-[500px] bg-indigo-500/10 blur-[120px] sm:blur-[160px] top-1/2 left-1/3 animate-pulse duration-7000" />
         <div className="absolute w-[300px] sm:w-[500px] h-[300px] sm:h-[500px] bg-purple-500/10 blur-[100px] sm:blur-[140px] -bottom-20 -right-20 animate-pulse duration-8000" />
-
-        {/* شبكة النقاط التقنية الخلفية */}
         <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.015)_1px,transparent_1px)] [background-size:24px_24px] opacity-60" />
       </div>
 
@@ -66,9 +66,9 @@ export default function Home() {
       <Navbar />
 
       {/* ================= HERO SECTION ================= */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 sm:pt-36 pb-12">
+      {/* تم زيادة الـ padding من فوق للشاشات الكبيرة (lg:pt-48) لمنع التداخل مع الـ Navbar */}
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 sm:pt-40 lg:pt-48 pb-12">
         <section className="flex flex-col-reverse md:flex-row items-center justify-between bg-white/[0.02] border border-white/5 backdrop-blur-2xl p-6 sm:p-10 md:p-12 rounded-[2.5rem] shadow-2xl shadow-black/40 gap-8 md:gap-12 animate-fadeIn relative group overflow-hidden">
-          {/* تأثير ضوء مخفي يظهر عند التمرير بالماوس فوق الكرت */}
           <div className="absolute -inset-px bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-opacity duration-700 -z-10" />
 
           <div className="w-full md:w-1/2 space-y-5 text-center md:text-left">
@@ -118,7 +118,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* صورة المدرب بتأثيرات وتوهج دائري */}
           <div className="w-full md:w-1/2 flex justify-center animate-scaleIn relative">
             <div className="absolute w-48 sm:w-64 h-48 sm:h-64 bg-indigo-500/20 rounded-full blur-3xl -z-10" />
             <div className="p-2 border border-white/10 bg-slate-900/50 rounded-full backdrop-blur-md shadow-2xl">
@@ -140,7 +139,6 @@ export default function Home() {
           </h2>
         </div>
 
-        {/* الشريط الانسيابي اللانهائي الدوار */}
         <div className="relative w-full overflow-hidden flex items-center Mask-Edges">
           <div className="flex gap-16 items-center whitespace-nowrap animate-marqueeContinuous py-2">
             {logos.map((logo, index) => (
@@ -154,9 +152,10 @@ export default function Home() {
           </div>
         </div>
       </section>
-
+      {/* ================= WALL OF FAME (NEW COMPONENT) ================= */}
+      <WallOfFame />
       {/* ================= STATS SECTION ================= */}
-      <section className="mt-20 sm:mt-28 max-w-6xl mx-auto px-4 sm:px-6 pb-24">
+      <section className="mt-20 sm:mt-28 max-w-6xl mx-auto px-4 sm:px-6 pb-16">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-center">
           {[
             {
@@ -226,19 +225,16 @@ export default function Home() {
           .animate-slideUp { opacity: 0; animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
           .animate-scaleIn { animation: scaleIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
           
-          /* تشغيل الأنيميشن المتناسق بشكل مستمر بنصف مصفوفة التكرار */
           .animate-marqueeContinuous { 
             animation: marqueeContinuous 22s linear infinite; 
             width: max-content;
             display: flex;
           }
           
-          /* إيقاف الحركة مؤقتاً لراحة عين المستخدم عند التمرير الفأرة */
           .animate-marqueeContinuous:hover {
             animation-play-state: paused;
           }
 
-          /* تنعيم حواف الشريط اللامع من اليمين واليسار */
           .Mask-Edges {
             mask-image: linear-gradient(to right, transparent, white 15%, white 85%, transparent);
             -webkit-mask-image: linear-gradient(to right, transparent, white 15%, white 85%, transparent);
@@ -255,4 +251,4 @@ export default function Home() {
       <Footer />
     </div>
   );
-}
+} 
