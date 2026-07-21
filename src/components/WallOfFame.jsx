@@ -120,6 +120,11 @@ export default function WallOfFame() {
       codeLink: "https://github.com/Bassant510/First-web.git",
     },
     {
+      name: "Layla Abo Hasiba",
+      projectLink: "https://liala-2003.github.io/final-project/",
+      codeLink: "https://github.com/liala-2003/final-project",
+    },
+    {
       name: "Naglaa Khalid",
       projectLink: "https://naglaakhalid.github.io/WorkSpace/",
       codeLink: "https://github.com/Naglaakhalid/WorkSpace.git",
