@@ -14,8 +14,8 @@ export default function SessionDetails() {
   const [showReview, setShowReview] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  const [isPassed, setIsPassed] = useState(false); // لمعرفة حالة النجاح لتشغيل الاحتفال
-  const [confetti, setConfetti] = useState([]); // لتوليد عناصر الاحتفال المخصصة
+  const [isPassed, setIsPassed] = useState(false);
+  const [confetti, setConfetti] = useState([]);
 
   const userId = auth.currentUser?.uid;
 
@@ -35,7 +35,6 @@ export default function SessionDetails() {
     }
   }, [error, successMsg]);
 
-  // دالة لتوليد جزيئات الاحتفال تلقائياً عند النجاح
   const triggerConfetti = () => {
     const colors = [
       "#10B981",
@@ -55,7 +54,6 @@ export default function SessionDetails() {
     }));
     setConfetti(pieces);
 
-    // إخفاء الاحتفال بعد 6 ثوانٍ لتوفير الأداء
     setTimeout(() => {
       setConfetti([]);
     }, 6000);
@@ -85,6 +83,20 @@ export default function SessionDetails() {
     }
   };
 
+  // ⭐ دالة ذكية لتحويل أي صيغة رابط يوتيوب إلى رابط Embed الصحيح للتشغيل داخل Iframe
+  const getEmbedUrl = (url) => {
+    if (!url) return "";
+    let videoId = "";
+    if (url.includes("youtu.be/")) {
+      videoId = url.split("youtu.be/")[1]?.split("?")[0];
+    } else if (url.includes("watch?v=")) {
+      videoId = url.split("watch?v=")[1]?.split("&")[0];
+    } else if (url.includes("embed/")) {
+      videoId = url.split("embed/")[1]?.split("?")[0];
+    }
+    return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+  };
+
   const startQuiz = () => setStarted(true);
 
   const handleSubmit = async () => {
@@ -101,7 +113,6 @@ export default function SessionDetails() {
       if (answers[i] === q.correct) finalScore++;
     });
 
-    // شرط النجاح: حل نصف الأسئلة أو أكثر صحيح
     const passed = finalScore >= session.quiz.length / 2;
 
     const ref = doc(db, "completedSessions", userId);
@@ -125,7 +136,6 @@ export default function SessionDetails() {
     setIsPassed(passed);
     setStarted(false);
 
-    // إذا نجح شغل تأثير الاحتفالات فوراً!
     if (passed) {
       triggerConfetti();
     }
@@ -193,6 +203,24 @@ export default function SessionDetails() {
           </a>
         )}
       </div>
+
+      {/* ================= YOUTUBE VIDEO IFRAME SECTION ================= */}
+      {session.youtubeLink && (
+        <div className="max-w-3xl mx-auto bg-white/5 p-4 rounded-2xl mb-6 border border-white/5 flex flex-col gap-3">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <span></span> Recorded YouTube Session
+          </h2>
+          <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-2xl bg-black border border-white/10">
+            <iframe
+              src={getEmbedUrl(session.youtubeLink)}
+              title={session.title}
+              className="absolute top-0 left-0 w-full h-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )}
 
       {/* ================= RESOURCES SECTION ================= */}
       {((session.sessionFile && session.sessionFile.url) ||
@@ -307,7 +335,6 @@ export default function SessionDetails() {
               key={i}
               className="p-4 bg-white/5 rounded-xl border border-white/5 animate-fadeIn"
             >
-              {/* ⭐ إضافة كلاسات الـ whitespace والخط ليعرض نص الكود والمسافات البرمجية بدقة للطالب */}
               <h3 className="font-semibold text-gray-200 text-sm md:text-base leading-relaxed whitespace-pre-wrap font-mono bg-black/10 p-3 rounded-xl border border-white/5 mb-3">
                 {i + 1}. {q.question}
               </h3>
@@ -367,7 +394,6 @@ export default function SessionDetails() {
               key={i}
               className="p-4 bg-white/5 rounded-xl border border-white/5"
             >
-              {/* ⭐ تعديل عرض السؤال في جزء المراجعة لدعم الأكواد والمسافات */}
               <h3 className="font-semibold text-gray-200 text-sm leading-relaxed whitespace-pre-wrap font-mono bg-black/20 p-3 rounded-xl border border-white/5 mb-3">
                 {i + 1}. {q.question}
               </h3>
