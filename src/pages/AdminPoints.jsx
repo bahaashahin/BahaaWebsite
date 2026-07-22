@@ -76,7 +76,8 @@ export default function AdminPoints() {
           (data.points?.tasks || 0) +
           (data.points?.attendance || 0) +
           (data.points?.search || 0) +
-          (data.points?.bonus || 0);
+          (data.points?.bonus || 0) +
+          (data.points?.PointLevel2 || 0);
         return { id: d.id, ...data, totalPoints };
       });
       setStudents(allStudents.sort((a, b) => b.totalPoints - a.totalPoints));
@@ -146,13 +147,13 @@ export default function AdminPoints() {
     }
   };
 
-  const handleAddPoints = async (id) => {
-    const addedPoints = Number(inputValues[id]);
+  const handlePointLevel2 = async (id) => {
+    const addedPoints = Number(inputValues[`lvl2_${id}`]) || 0;
     if (!addedPoints) return;
     const student = students.find((s) => s.id === id);
     const newPoints = {
       ...student.points,
-      bonus: (student.points?.bonus || 0) + addedPoints,
+      PointLevel2: (student.points?.PointLevel2 || 0) + addedPoints,
     };
     try {
       await updateDoc(doc(db, "students", id), { points: newPoints });
@@ -169,8 +170,11 @@ export default function AdminPoints() {
           )
           .sort((a, b) => b.totalPoints - a.totalPoints),
       );
-      setInputValues((prev) => ({ ...prev, [id]: "" }));
-      setMessage({ text: "Points updated successfully", type: "success" });
+      setInputValues((prev) => ({ ...prev, [`lvl2_${id}`]: "" }));
+      setMessage({
+        text: "Level 2 points updated successfully",
+        type: "success",
+      });
     } catch {
       setMessage({ text: "Server error occurred", type: "error" });
     }
@@ -259,8 +263,8 @@ export default function AdminPoints() {
                       <span className="block text-2xl md:text-3xl font-black text-white tracking-tight">
                         {s.totalPoints}
                       </span>
-                      <span className="text-[10px] md:text-xs text-indigo-400 font-bold uppercase tracking-wider">
-                        Points
+                      <span className="block text-[10px] md:text-xs text-emerald-400 font-bold uppercase tracking-wider">
+                        Lvl 2: {s.points?.PointLevel2 || 0} pts
                       </span>
                     </div>
                   </div>
@@ -307,24 +311,24 @@ export default function AdminPoints() {
 
                   {/* Actions */}
                   <div className="mt-auto space-y-3">
-                    {/* Points Input Group */}
-                    <div className="flex items-center gap-2 bg-slate-950/50 p-1.5 rounded-2xl border border-slate-800 focus-within:border-indigo-500/50 transition-colors">
+                    {/* Level 2 Points Input Group */}
+                    <div className="flex items-center gap-2 bg-slate-950/50 p-1.5 rounded-2xl border border-emerald-500/30 focus-within:border-emerald-500 transition-colors">
                       <input
                         type="number"
-                        placeholder="+ Bonus"
-                        className="w-full bg-transparent p-2 text-xs md:text-sm text-center outline-none text-slate-200 placeholder-slate-600 font-medium"
-                        value={inputValues[s.id] || ""}
+                        placeholder="+ Lvl 2 Points"
+                        className="w-full bg-transparent p-2 text-xs md:text-sm text-center outline-none text-emerald-200 placeholder-emerald-600/70 font-medium"
+                        value={inputValues[`lvl2_${s.id}`] || ""}
                         onChange={(e) =>
                           setInputValues({
                             ...inputValues,
-                            [s.id]: e.target.value,
+                            [`lvl2_${s.id}`]: e.target.value,
                           })
                         }
                       />
                       <button
-                        onClick={() => handleAddPoints(s.id)}
-                        className="p-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50"
-                        title="Add Points"
+                        onClick={() => handlePointLevel2(s.id)}
+                        className="p-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50"
+                        title="Add Level 2 Points"
                       >
                         <FaCheck size={14} />
                       </button>

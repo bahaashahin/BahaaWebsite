@@ -11,17 +11,20 @@ import {
   FaStar,
   FaUser,
   FaMedal,
+  FaLayerGroup,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import certificateBg from "../assets/CateRef.png";
 
 export default function Dashboard() {
   const [student, setStudent] = useState(null);
-  const [students, setStudents] = useState([]);
+  const [rawStudents, setRawStudents] = useState([]); // حفظ البيانات الخام للطلاب
+  const [students, setStudents] = useState([]); // الطلاب بعد الترتيب حسب التبويب
   const [sessionsStatus, setSessionsStatus] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [myRank, setMyRank] = useState("-"); // State لتخزين ترتيب الطالب الحالي
+  const [myRank, setMyRank] = useState("-");
+  const [activeTab, setActiveTab] = useState(1); // 1 للمستوى الأول، 2 للمستوى الثاني
 
   const navigate = useNavigate();
 
@@ -35,7 +38,6 @@ export default function Dashboard() {
       const uid = user.uid;
 
       try {
-        // تشغيل كل الطلبات بالتوازي لسرعة خارقة
         const [adminSnap, docSnap, completedSnap, sessionsSnap, rankingSnap] =
           await Promise.all([
             getDoc(doc(db, "admins", uid)).catch(() => null),
@@ -45,18 +47,21 @@ export default function Dashboard() {
             getDocs(collection(db, "students")),
           ]);
 
-        // 1. Admin Check
         if (adminSnap && adminSnap.exists()) setIsAdmin(true);
 
-        // 2. Student Data
-        if (docSnap.exists()) setStudent(docSnap.data());
+        let studentData = null;
+        if (docSnap.exists()) {
+          studentData = docSnap.data();
+          setStudent(studentData);
+          if (studentData.Level) {
+            setActiveTab(Number(studentData.Level));
+          }
+        }
 
-        // 3. Completed Sessions
         const completedData = completedSnap.exists()
           ? completedSnap.data()
           : {};
 
-        // 4. Process Sessions
         const sessionsArr = [];
         sessionsSnap.forEach((s) => {
           const sessionId = s.id;
@@ -68,32 +73,19 @@ export default function Dashboard() {
             completed: userSession.completed || false,
             score: userSession.score || 0,
             createdAt: sessionData.createdAt || 0,
+            level: sessionData.level || 1, // ربط السيشن بالمستوى إذا وجد، افتراضاً Level 1
           });
         });
         sessionsArr.sort((a, b) => b.createdAt - a.createdAt);
         setSessionsStatus(sessionsArr);
 
-        // 5. Process Ranking
         const allStudents = [];
         rankingSnap.forEach((d) => {
           const data = d.data();
-          const totalPoints =
-            (data.points?.tasks || 0) +
-            (data.points?.attendance || 0) +
-            (data.points?.search || 0) +
-            (data.points?.bonus || 0);
-          allStudents.push({ id: d.id, ...data, totalPoints });
+          allStudents.push({ id: d.id, ...data });
         });
 
-        // ترتيب الطلاب من الأعلى للأقل
-        allStudents.sort((a, b) => b.totalPoints - a.totalPoints);
-        setStudents(allStudents);
-
-        // حساب ترتيب الطالب الحالي ديناميكياً
-        const rankIndex = allStudents.findIndex((s) => s.id === uid);
-        if (rankIndex !== -1) {
-          setMyRank(rankIndex + 1); // +1 لأن المصفوفة تبدأ من 0
-        }
+        setRawStudents(allStudents);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -104,7 +96,8 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, [navigate]);
 
-  const calculatePoints = (user) => {
+  // دالة حساب نقاط المستوى الأول
+  const calculateLevel1Points = (user) => {
     if (!user?.points) return 0;
     return (
       (user.points.tasks || 0) +
@@ -113,16 +106,45 @@ export default function Dashboard() {
       (user.points.bonus || 0)
     );
   };
+
+  // دالة حساب نقاط المستوى الثاني
+  const calculateLevel2Points = (user) => {
+    if (!user?.points) return 0;
+    return user.points.PointLevel2 || 0;
+  };
+
+  // إعادة حساب الترتيب والنقاط كلما تغير التبويب النشط (ActiveTab)
+  useEffect(() => {
+    if (rawStudents.length === 0) return;
+
+    const processedStudents = rawStudents.map((s) => {
+      const l1 = calculateLevel1Points(s);
+      const l2 = calculateLevel2Points(s);
+      const currentPoints = activeTab === 2 ? l2 : l1;
+      return {
+        ...s,
+        totalPoints: currentPoints,
+      };
+    });
+
+    processedStudents.sort((a, b) => b.totalPoints - a.totalPoints);
+    setStudents(processedStudents);
+
+    const uid = auth.currentUser?.uid;
+    const rankIndex = processedStudents.findIndex((s) => s.id === uid);
+    if (rankIndex !== -1) {
+      setMyRank(rankIndex + 1);
+    } else {
+      setMyRank("-");
+    }
+  }, [activeTab, rawStudents]);
+
   const certificateRef = useRef(null);
-
-
 
   const downloadCertificate = async (format) => {
     try {
       await document.fonts.ready;
-
       const element = certificateRef.current;
-
       const dataUrl = await toPng(element, {
         cacheBust: true,
         pixelRatio: 4,
@@ -131,18 +153,15 @@ export default function Dashboard() {
 
       if (format === "pdf") {
         const img = new Image();
-
         img.onload = () => {
           const pdf = new jsPDF({
             orientation: "landscape",
             unit: "px",
             format: [img.width, img.height],
           });
-
           pdf.addImage(dataUrl, "PNG", 0, 0, img.width, img.height);
           pdf.save(`Certificate_${student?.Name}.pdf`);
         };
-
         img.src = dataUrl;
       } else {
         const link = document.createElement("a");
@@ -157,21 +176,79 @@ export default function Dashboard() {
 
   if (loading) return <SkeletonLoader />;
 
-  const studentPoints = calculatePoints(student);
+  const level1Points = calculateLevel1Points(student);
+  const level2Points = calculateLevel2Points(student);
+  const currentPoints = activeTab === 2 ? level2Points : level1Points;
   const topStudent = students[0];
+  const isLvl2 = activeTab === 2;
+
+  // فلترة السيشنز بناءً على التبويب إذا أردت فصلها (أو عرض الكل إذا لم يكن هناك حقل مستوى للسيشن)
+  const filteredSessions = sessionsStatus.filter((session) => {
+    if (activeTab === 2) {
+      return (
+        session.level === 2 ||
+        session.name.toLowerCase().includes("level 2") ||
+        session.name.toLowerCase().includes("lvl 2")
+      );
+    } else {
+      return (
+        session.level !== 2 &&
+        !session.name.toLowerCase().includes("level 2") &&
+        !session.name.toLowerCase().includes("lvl 2")
+      );
+    }
+  });
+
+  // إذا أردت إظهار كل السيشنز في حال لم تكن مقسمة بمسمى خاص، يمكنك استخدام sessionsStatus مباشرة. سنستخدم filteredSessions وإن كانت فارغة نعرض الكل لضمان عدم اختفائها:
+  const displayedSessions =
+    filteredSessions.length > 0 ? filteredSessions : sessionsStatus;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-4 sm:p-6 md:p-8 text-white">
+    <div
+      className={`min-h-screen bg-gradient-to-br ${isLvl2 ? "from-slate-950 via-slate-900 to-emerald-950" : "from-slate-950 via-slate-900 to-indigo-950"} p-4 sm:p-6 md:p-8 text-white transition-colors duration-500`}
+    >
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* هيدر ترحيبي عالي الاحترافية */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/5 border border-white/10 p-5 sm:p-6 rounded-3xl backdrop-blur-xl mt-16">
+        {/* شريط التنقل بين المستويات (Tabs) */}
+        {(isAdmin || (student?.Level && Number(student.Level) >= 2)) && (
+          <div className="flex justify-center gap-3 mt-16 mb-2">
+            <button
+              onClick={() => setActiveTab(1)}
+              className={`px-6 py-2.5 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 border ${
+                activeTab === 1
+                  ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/30"
+                  : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+              }`}
+            >
+              <FaLayerGroup /> Level 1
+            </button>
+            <button
+              onClick={() => setActiveTab(2)}
+              className={`px-6 py-2.5 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 border ${
+                activeTab === 2
+                  ? "bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-600/30"
+                  : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+              }`}
+            >
+              <FaLayerGroup /> Level 2
+            </button>
+          </div>
+        )}
+
+        {/* هيدر ترحيبي */}
+        <div
+          className={`flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/5 border ${isLvl2 ? "border-emerald-500/20" : "border-white/10"} p-5 sm:p-6 rounded-3xl backdrop-blur-xl ${!(isAdmin || (student?.Level && Number(student.Level) >= 2)) ? "mt-16" : ""}`}
+        >
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-indigo-600/30 border border-indigo-500 text-indigo-400 rounded-2xl flex items-center justify-center text-xl sm:text-2xl font-bold shrink-0">
+            <div
+              className={`w-12 h-12 sm:w-14 sm:h-14 ${isLvl2 ? "bg-emerald-600/30 border-emerald-500 text-emerald-400" : "bg-indigo-600/30 border-indigo-500 text-indigo-400"} border rounded-2xl flex items-center justify-center text-xl sm:text-2xl font-bold shrink-0`}
+            >
               <FaUser />
             </div>
             <div>
-              <p className="text-xs sm:text-sm text-indigo-400 font-medium tracking-wide uppercase ">
-                Student Dashboard
+              <p
+                className={`text-xs sm:text-sm ${isLvl2 ? "text-emerald-400" : "text-indigo-400"} font-medium tracking-wide uppercase`}
+              >
+                Student Dashboard - Level {activeTab}
               </p>
               <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight mt-0.5 break-words">
                 {student?.Name || "Welcome back"}
@@ -188,8 +265,10 @@ export default function Dashboard() {
             </p>
             <p>
               <span className="text-slate-500">Level:</span>{" "}
-              <span className="text-indigo-400 font-semibold">
-                {student?.Level}
+              <span
+                className={`${isLvl2 ? "text-emerald-400" : "text-indigo-400"} font-semibold`}
+              >
+                {activeTab}
               </span>
             </p>
             <p>
@@ -198,146 +277,148 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {studentPoints >= 200 ? (
-          <>
-            {/* Certificate Preview */}
-            <div className="w-full overflow-x-auto flex justify-center py-4">
-              <div
-                ref={certificateRef}
-                className="relative rounded-xl overflow-hidden bg-white shadow-2xl"
-                style={{
-                  width: "800px",
-                  height: "567px",
-                  flexShrink: 0,
-                }}
-              >
-                {/* Background */}
-                <img
-                  src={certificateBg}
-                  alt="Certificate Background"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  draggable={false}
-                />
-
-                {/* Content */}
-                <div className="absolute inset-0 z-10">
-                  {/* Student Name */}
-                  <div
-                    className="absolute left-1/2 -translate-x-1/2 flex justify-center"
-                    style={{
-                      top: "44%",
-                      width: "75%",
-                      background: "linear-gradient(90deg,#e000f4,#1100d6)",
-                      borderRadius: "9999px",
-                      padding: "10px 28px",
-                      display: "inline-flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    <span
+        {/* محتوى الشهادة للمستوى الأول */}
+        {activeTab === 1 ? (
+          level1Points >= 200 ? (
+            <>
+              <div className="w-full overflow-x-auto flex justify-center py-4">
+                <div
+                  ref={certificateRef}
+                  className="relative rounded-xl overflow-hidden bg-white shadow-2xl"
+                  style={{ width: "800px", height: "567px", flexShrink: 0 }}
+                >
+                  <img
+                    src={certificateBg}
+                    alt="Certificate Background"
+                    className="absolute inset-0 w-full h-full object-cover"
+                    draggable={false}
+                  />
+                  <div className="absolute inset-0 z-10">
+                    <div
+                      className="absolute left-1/2 -translate-x-1/2 flex justify-center"
                       style={{
-                        fontSize: "28px",
-                        fontWeight: 700,
-                        color: "#fff",
-                        lineHeight: 1,
-                      }}
-                    >
-                      {student?.Name}
-                    </span>
-                  </div>
-
-                  {/* Bottom Text */}
-                  <div
-                    className="absolute left-1/2 -translate-x-1/2 text-center"
-                    style={{
-                      top: "60%",
-                      width: "78%",
-                    }}
-                  >
-                    <p
-                      className="text-white font-medium"
-                      style={{
-                        fontSize: "13px",
-                        lineHeight: "1.45",
+                        top: "44%",
+                        width: "75%",
+                        background: "linear-gradient(90deg,#e000f4,#1100d6)",
+                        borderRadius: "9999px",
+                        padding: "10px 28px",
+                        display: "inline-flex",
+                        justifyContent: "center",
+                        alignItems: "center",
                       }}
                     >
                       <span
-                        className="block font-bold mb-3"
                         style={{
-                          color: "#b8c5ff",
-                          fontSize: "12px",
+                          fontSize: "28px",
+                          fontWeight: 700,
+                          color: "#fff",
+                          lineHeight: 1,
                         }}
                       >
-                        {myRank === 1
-                          ? "🌟 Congratulations! You have been recognized as the Top Student of Level 1."
-                          : "I wish you continued success."}
+                        {student?.Name}
                       </span>
-                      has successfully completed the
-                      <br />
-                      <span className="font-semibold">
-                        "Level 1 HTML, CSS, Tailwind CSS"
-                      </span>
-                      <br />
-                      presented by Bahaa Shaheen
-                      <br />
-                      We wish you continued success in all your future
-                      endeavors.
-                    </p>
+                    </div>
+
+                    <div
+                      className="absolute left-1/2 -translate-x-1/2 text-center"
+                      style={{ top: "60%", width: "78%" }}
+                    >
+                      <p
+                        className="text-white font-medium"
+                        style={{ fontSize: "13px", lineHeight: "1.45" }}
+                      >
+                        <span
+                          className="block font-bold mb-3"
+                          style={{ color: "#b8c5ff", fontSize: "12px" }}
+                        >
+                          {myRank === 1
+                            ? "Congratulations! You have been recognized as the Top Student of Level 1."
+                            : "I wish you continued success."}
+                        </span>
+                        has successfully completed the
+                        <br />
+                        <span className="font-semibold">
+                          "Level 1 HTML, CSS, Tailwind CSS"
+                        </span>
+                        <br />
+                        presented by Bahaa Shaheen
+                        <br />
+                        We wish you continued success in all your future
+                        endeavors.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Buttons */}
-            <div className="flex flex-wrap justify-center gap-4 mt-6">
-              <button
-                onClick={() => downloadCertificate("png")}
-                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition"
-              >
-                Download PNG
-              </button>
-
-              <button
-                onClick={() => downloadCertificate("pdf")}
-                className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold transition"
-              >
-                Download PDF
-              </button>
+              <div className="flex flex-wrap justify-center gap-4 mt-6">
+                <button
+                  onClick={() => downloadCertificate("png")}
+                  className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition"
+                >
+                  Download PNG
+                </button>
+                <button
+                  onClick={() => downloadCertificate("pdf")}
+                  className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold transition"
+                >
+                  Download PDF
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-6 text-center">
+              <h3 className="text-xl font-bold text-yellow-400">
+                Certificate Locked
+              </h3>
+              <p className="text-gray-300 mt-2">
+                You need at least{" "}
+                <span className="font-bold text-white">200 points</span> to
+                unlock your certificate.
+              </p>
+              <p className="mt-3 text-lg font-bold text-indigo-400">
+                Your Score: {level1Points} / 200
+              </p>
             </div>
-          </>
+          )
         ) : (
-          // الكود الخاص بـ Certificate Locked كما هو
-
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-6 text-center">
-            <h3 className="text-xl font-bold text-yellow-400">
-              Certificate Locked 🔒
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-3xl p-6 text-center backdrop-blur-xl">
+            <h3 className="text-xl font-bold text-emerald-400">
+              Level 2 Dashboard Workspace
             </h3>
-
-            <p className="text-gray-300 mt-2">
-              You need at least{" "}
-              <span className="font-bold text-white">200 points</span> to unlock
-              your certificate.
+            <p className="text-gray-300 mt-2 text-sm">
+              Welcome to Level 2. Track your advanced tasks and specialized
+              point allocations below.
             </p>
-
-            <p className="mt-3 text-lg font-bold text-indigo-400">
-              Your Score: {studentPoints} / 200
+            <p className="mt-3 text-2xl font-black text-emerald-300">
+              Level 2 Score: {level2Points} pts
             </p>
           </div>
         )}
 
+        {/* كروت الإحصاءات */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-600/20 to-indigo-900/10 border border-indigo-500/20 shadow-xl flex justify-between items-center group hover:border-indigo-500/40 transition-all duration-300">
+          <div
+            className={`p-5 rounded-3xl bg-gradient-to-br ${isLvl2 ? "from-emerald-600/20 to-emerald-900/10 border-emerald-500/20 hover:border-emerald-500/40 text-emerald-200" : "from-indigo-600/20 to-indigo-900/10 border-indigo-500/20 hover:border-indigo-500/40 text-indigo-200"} border shadow-xl flex justify-between items-center group transition-all duration-300`}
+          >
             <div>
-              <p className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
-                Your Total Score
+              <p
+                className={`text-xs font-semibold ${isLvl2 ? "text-emerald-400" : "text-indigo-400"} uppercase tracking-wider`}
+              >
+                {isLvl2 ? "Level 2 Score" : "Level 1 Score"}
               </p>
-              <p className="text-2xl sm:text-3xl font-black mt-1 text-transparent bg-clip-text bg-gradient-to-r from-white to-indigo-200">
-                {studentPoints}{" "}
-                <span className="text-xs font-normal text-indigo-300">pts</span>
+              <p className="text-2xl sm:text-3xl font-black mt-1 text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-200">
+                {currentPoints}{" "}
+                <span
+                  className={`text-xs font-normal ${isLvl2 ? "text-emerald-300" : "text-indigo-300"}`}
+                >
+                  pts
+                </span>
               </p>
             </div>
-            <div className="w-11 h-11 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform shrink-0">
+            <div
+              className={`w-11 h-11 rounded-2xl ${isLvl2 ? "bg-emerald-500/20" : "bg-indigo-500/20"} flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform shrink-0`}
+            >
               <FaStar className="text-amber-400" />
             </div>
           </div>
@@ -379,28 +460,35 @@ export default function Dashboard() {
           )}
         </div>
 
+        {/* الجداول السفلية */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
           <div className="md:col-span-3 bg-white/5 border border-white/10 p-5 sm:p-6 rounded-3xl backdrop-blur-xl h-fit">
             <h2 className="text-base sm:text-lg font-bold mb-4 flex items-center gap-2">
-              <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-              Sessions Progress
+              <span
+                className={`w-2 h-2 ${isLvl2 ? "bg-emerald-500" : "bg-blue-500"} rounded-full animate-pulse`}
+              />
+              Sessions Progress (Level {activeTab})
             </h2>
             <div className="space-y-2.5 max-h-[350px] sm:max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
-              {sessionsStatus.map((session) => {
+              {displayedSessions.map((session) => {
                 const isCompleted = session.completed;
                 return (
                   <div
                     key={session.id}
                     className={`flex justify-between items-center p-3 sm:p-3.5 rounded-2xl transition-all duration-200 border gap-2 ${
                       isCompleted
-                        ? "bg-blue-600/10 border-blue-500/20 hover:border-blue-500/40"
+                        ? isLvl2
+                          ? "bg-emerald-600/10 border-emerald-500/20 hover:border-emerald-500/40"
+                          : "bg-blue-600/10 border-blue-500/20 hover:border-blue-500/40"
                         : "bg-slate-900/40 border-white/5 hover:border-white/10"
                     }`}
                   >
                     <span
                       className={`text-xs sm:text-sm truncate flex-1 ${
                         isCompleted
-                          ? "text-blue-100 font-medium"
+                          ? isLvl2
+                            ? "text-emerald-100 font-medium"
+                            : "text-blue-100 font-medium"
                           : "text-slate-400"
                       }`}
                     >
@@ -409,7 +497,9 @@ export default function Dashboard() {
 
                     <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                       {isCompleted && (
-                        <span className="text-[10px] sm:text-xs px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded-full font-semibold">
+                        <span
+                          className={`text-[10px] sm:text-xs px-2 py-0.5 ${isLvl2 ? "bg-emerald-500/20 text-emerald-300" : "bg-blue-500/20 text-blue-300"} rounded-full font-semibold`}
+                        >
                           {session.score} pts
                         </span>
                       )}
@@ -428,7 +518,9 @@ export default function Dashboard() {
                       <span
                         className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-xl text-[10px] sm:text-xs transition-colors ${
                           isCompleted
-                            ? "bg-blue-500 text-white shadow-lg shadow-blue-500/30"
+                            ? isLvl2
+                              ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30"
+                              : "bg-blue-500 text-white shadow-lg shadow-blue-500/30"
                             : "bg-slate-800 text-slate-500"
                         }`}
                       >
@@ -443,7 +535,7 @@ export default function Dashboard() {
 
           <div className="md:col-span-2 bg-white/5 border border-white/10 p-5 sm:p-6 rounded-3xl backdrop-blur-xl h-fit">
             <h2 className="text-base sm:text-lg font-bold mb-4 text-center border-b border-white/10 pb-3">
-              🏆 Global Ranking
+              Global Ranking (Level {activeTab})
             </h2>
             <div className="space-y-2 max-h-[350px] sm:max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
               {students.map((s, i) => {
@@ -453,35 +545,25 @@ export default function Dashboard() {
                     key={s.id}
                     className={`p-2.5 sm:p-3 rounded-2xl flex justify-between items-center border transition-all ${
                       isMe
-                        ? "bg-gradient-to-r from-indigo-600 to-indigo-700 border-indigo-400 text-white font-bold shadow-lg shadow-indigo-600/20 scale-[1.01]"
+                        ? isLvl2
+                          ? "bg-gradient-to-r from-emerald-600 to-emerald-700 border-emerald-400 text-white font-bold shadow-lg shadow-emerald-600/20 scale-[1.01]"
+                          : "bg-gradient-to-r from-indigo-600 to-indigo-700 border-indigo-400 text-white font-bold shadow-lg shadow-indigo-600/20 scale-[1.01]"
                         : "bg-slate-900/40 border-white/5 text-slate-300"
                     }`}
                   >
                     <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm truncate mr-2">
-                      <span
-                        className={`w-5 text-center font-bold text-xs ${
-                          i === 0
-                            ? "text-amber-400 text-sm"
-                            : i === 1
-                              ? "text-slate-300"
-                              : i === 2
-                                ? "text-amber-600"
-                                : "text-slate-500"
-                        }`}
-                      >
-                        {i === 0
-                          ? "🥇"
-                          : i === 1
-                            ? "🥈"
-                            : i === 2
-                              ? "🥉"
-                              : i + 1}
+                      <span className="w-5 text-center font-bold text-xs text-slate-500">
+                        {i + 1}
                       </span>
                       <span className="truncate">{s.Name}</span>
                     </div>
                     <span
                       className={`text-[11px] sm:text-xs font-bold shrink-0 ${
-                        isMe ? "text-white" : "text-indigo-400"
+                        isMe
+                          ? "text-white"
+                          : isLvl2
+                            ? "text-emerald-400"
+                            : "text-indigo-400"
                       }`}
                     >
                       {s.totalPoints} pts
