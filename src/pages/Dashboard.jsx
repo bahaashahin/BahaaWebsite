@@ -12,9 +12,12 @@ import {
   FaUser,
   FaMedal,
   FaLayerGroup,
+  FaRoad,
+  FaChevronDown,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import certificateBg from "../assets/CateRef.png";
+import roadmapImg from "../assets/roadmapJs.png"; // استيراد صورة الرود ماب (تأكد من مسار الصورة الصحيح أو قم بتعديله)
 
 export default function Dashboard() {
   const [student, setStudent] = useState(null);
@@ -25,6 +28,7 @@ export default function Dashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [myRank, setMyRank] = useState("-");
   const [activeTab, setActiveTab] = useState(1); // 1 للمستوى الأول، 2 للمستوى الثاني
+  const [showRoadmap, setShowRoadmap] = useState(false); // حالة إظهار وإخفاء بلوك الرود ماب
 
   const navigate = useNavigate();
 
@@ -73,7 +77,7 @@ export default function Dashboard() {
             completed: userSession.completed || false,
             score: userSession.score || 0,
             createdAt: sessionData.createdAt || 0,
-            level: sessionData.level || 1, // ربط السيشن بالمستوى إذا وجد، افتراضاً Level 1
+            level: sessionData.level || 1,
           });
         });
         sessionsArr.sort((a, b) => b.createdAt - a.createdAt);
@@ -182,7 +186,6 @@ export default function Dashboard() {
   const topStudent = students[0];
   const isLvl2 = activeTab === 2;
 
-  // فلترة السيشنز بناءً على التبويب إذا أردت فصلها (أو عرض الكل إذا لم يكن هناك حقل مستوى للسيشن)
   const filteredSessions = sessionsStatus.filter((session) => {
     if (activeTab === 2) {
       return (
@@ -199,7 +202,6 @@ export default function Dashboard() {
     }
   });
 
-  // إذا أردت إظهار كل السيشنز في حال لم تكن مقسمة بمسمى خاص، يمكنك استخدام sessionsStatus مباشرة. سنستخدم filteredSessions وإن كانت فارغة نعرض الكل لضمان عدم اختفائها:
   const displayedSessions =
     filteredSessions.length > 0 ? filteredSessions : sessionsStatus;
 
@@ -275,6 +277,52 @@ export default function Dashboard() {
               <span className="text-slate-500">Status:</span> {student?.Student}
             </p>
           </div>
+        </div>
+
+        {/* زر إظهار/إخفاء الرود ماب الاحترافي تحت كارد بيانات الطالب مباشرة */}
+        <div>
+          <button
+            onClick={() => setShowRoadmap(!showRoadmap)}
+            className={`w-full py-3.5 px-5 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-between border transition-all duration-300 shadow-xl ${
+              isLvl2
+                ? "bg-emerald-950/40 border-emerald-500/30 hover:bg-emerald-900/40 text-emerald-300 shadow-emerald-950/50"
+                : "bg-indigo-950/40 border-indigo-500/30 hover:bg-indigo-900/40 text-indigo-300 shadow-indigo-950/50"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`p-2 rounded-xl ${isLvl2 ? "bg-emerald-500/20 text-emerald-400" : "bg-indigo-500/20 text-indigo-400"}`}
+              >
+                <FaRoad className="text-lg" />
+              </div>
+              <span>View Level {activeTab} Roadmap</span>
+            </div>
+            <FaChevronDown
+              className={`transition-transform duration-300 ${showRoadmap ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          {/* بلوك عرض الرود ماب المنسدل */}
+          {showRoadmap && (
+            <div className="mt-3 p-4 sm:p-6 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-xl animate-fadeIn space-y-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <h3 className="font-bold text-sm sm:text-base text-slate-200">
+                  Level {activeTab} Learning Roadmap
+                </h3>
+                <span className="text-xs text-slate-400 bg-white/5 px-2.5 py-1 rounded-lg">
+                  Visual Guide
+                </span>
+              </div>
+              <div className="w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60 flex justify-center p-2">
+                <img
+                  src={roadmapImg}
+                  alt={`Level ${activeTab} Roadmap`}
+                  className="w-full h-auto max-h-[500px] object-contain rounded-xl"
+                  draggable={false}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* محتوى الشهادة للمستوى الأول */}
