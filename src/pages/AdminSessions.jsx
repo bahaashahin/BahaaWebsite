@@ -24,8 +24,9 @@ export default function AdminSessions() {
     title: "",
     description: "",
     link: "",
-    youtubeLink: "", // ⭐ Added YouTube link field
-    level: 1, // ⭐ Level selection added (default 1)
+    youtubeLink: "",
+    level: 1,
+    quizDurationMinutes: 5, // 🚀 تم توحيد الاسم ليتطابق مع ملف عرض الجلسة للطلاب
     sessionFile: { title: "", url: "" },
     sessionCode: { title: "", body: "" },
   });
@@ -81,8 +82,9 @@ export default function AdminSessions() {
       title: s.title || "",
       description: s.description || "",
       link: s.link || "",
-      youtubeLink: s.youtubeLink || "", // ⭐ Load YouTube link on edit
+      youtubeLink: s.youtubeLink || "",
       level: Number(s.level) || 1,
+      quizDurationMinutes: Number(s.quizDurationMinutes || s.quizDuration) || 5, // 🚀 جلب القيمة بشكل صحيح سواءً كانت قديمة أو جديدة
       sessionFile: {
         title: s.sessionFile?.title || "",
         url: s.sessionFile?.url || "",
@@ -97,7 +99,6 @@ export default function AdminSessions() {
         ? s.quiz
         : [{ question: "", options: ["", "", ""], correct: 0, points: 1 }],
     );
-    // Scroll smoothly to top form
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -109,6 +110,7 @@ export default function AdminSessions() {
       link: "",
       youtubeLink: "",
       level: 1,
+      quizDurationMinutes: 5,
       sessionFile: { title: "", url: "" },
       sessionCode: { title: "", body: "" },
     });
@@ -170,7 +172,6 @@ export default function AdminSessions() {
             }
           />
 
-          {/* ⭐ YouTube Link Input */}
           <input
             placeholder="YouTube Link (e.g., https://youtube.com/...)"
             className="p-3 rounded bg-white/10 border border-red-500/20 focus:border-red-500 outline-none"
@@ -180,28 +181,53 @@ export default function AdminSessions() {
             }
           />
 
-          {/* ⭐ Level Selection for Session */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-gray-400 font-medium">
-              Session Level Target:
-            </label>
-            <select
-              className="p-3 rounded bg-white/10 text-white border border-white/10"
-              value={newSession.level}
-              onChange={(e) =>
-                setNewSession({ ...newSession, level: Number(e.target.value) })
-              }
-            >
-              <option value={1} className="bg-slate-900 text-white">
-                Level One (1)
-              </option>
-              <option value={2} className="bg-slate-900 text-white">
-                Level Two (2)
-              </option>
-              <option value={3} className="bg-slate-900 text-white">
-                Level Three (3)
-              </option>
-            </select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Level Selection */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-gray-400 font-medium">
+                Session Level Target:
+              </label>
+              <select
+                className="p-3 rounded bg-white/10 text-white border border-white/10"
+                value={newSession.level}
+                onChange={(e) =>
+                  setNewSession({
+                    ...newSession,
+                    level: Number(e.target.value),
+                  })
+                }
+              >
+                <option value={1} className="bg-slate-900 text-white">
+                  Level One (1)
+                </option>
+                <option value={2} className="bg-slate-900 text-white">
+                  Level Two (2)
+                </option>
+                <option value={3} className="bg-slate-900 text-white">
+                  Level Three (3)
+                </option>
+              </select>
+            </div>
+
+            {/* 🚀 Quiz Duration Input */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-gray-400 font-medium">
+                Quiz Timer (in Minutes):
+              </label>
+              <input
+                type="number"
+                min="1"
+                placeholder="Minutes (e.g., 5)"
+                className="p-3 rounded bg-white/10 text-white border border-white/10"
+                value={newSession.quizDurationMinutes}
+                onChange={(e) =>
+                  setNewSession({
+                    ...newSession,
+                    quizDurationMinutes: Number(e.target.value),
+                  })
+                }
+              />
+            </div>
           </div>
 
           {/* ATTACHMENTS (FILES & CODE) */}
@@ -291,7 +317,7 @@ export default function AdminSessions() {
               </button>
 
               <textarea
-                placeholder="Question text (Supports code & line breaks... Enter works here)"
+                placeholder="Question text..."
                 className="p-3 rounded bg-white/10 text-sm font-mono h-24 resize-y"
                 value={q.question}
                 onChange={(e) => {
@@ -376,46 +402,18 @@ export default function AdminSessions() {
               <div>
                 <div className="flex justify-between items-start gap-2 mb-2">
                   <h3 className="font-bold text-lg">{s.title}</h3>
-                  <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 shrink-0 font-bold">
-                    Lvl {s.level || 1}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 shrink-0 font-bold">
+                      Lvl {s.level || 1}
+                    </span>
+                    <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0 font-bold">
+                      ⏱ {s.quizDurationMinutes || s.quizDuration || 5}m
+                    </span>
+                  </div>
                 </div>
                 <p className="text-gray-300 text-sm mb-3 line-clamp-2">
                   {s.description}
                 </p>
-
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {s.link && (
-                    <a
-                      href={s.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-400 text-xs bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20"
-                    >
-                      🔗 Session Link
-                    </a>
-                  )}
-                  {s.youtubeLink && (
-                    <a
-                      href={s.youtubeLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-red-400 text-xs bg-red-500/10 px-2 py-1 rounded border border-red-500/20"
-                    >
-                      ▶️ YouTube
-                    </a>
-                  )}
-                  {s.sessionFile?.url && (
-                    <span className="text-indigo-400 text-xs bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20">
-                      📁 Has File
-                    </span>
-                  )}
-                  {s.sessionCode?.body && (
-                    <span className="text-emerald-400 text-xs bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
-                      💻 Has Code
-                    </span>
-                  )}
-                </div>
               </div>
 
               <div className="flex gap-2 mt-2">
@@ -459,7 +457,7 @@ export default function AdminSessions() {
                 >
                   <h3 className="font-bold text-gray-200 mb-3 whitespace-pre-wrap font-mono text-sm leading-relaxed bg-black/20 p-3 rounded border border-white/5">
                     {i + 1}.{"\n"}
-                    {q.question}
+                    {q.sessionCode || q.question}
                   </h3>
 
                   {q.options.map((opt, j) => (

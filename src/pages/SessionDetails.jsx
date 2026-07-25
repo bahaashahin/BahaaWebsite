@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { db, auth } from "../firebase";
 import {
   doc,
@@ -10,13 +10,13 @@ import {
   where,
 } from "firebase/firestore";
 import { useParams } from "react-router-dom";
-import { FaTasks, FaLink, FaCalendarAlt } from "react-icons/fa";
+import { FaTasks, FaLink, FaCalendarAlt, FaClock } from "react-icons/fa";
 
 export default function SessionDetails() {
   const { id } = useParams();
 
   const [session, setSession] = useState(null);
-  const [sessionTasks, setSessionTasks] = useState([]); // 🚀 قائمة المهام المرتبطة بهذه السيشن
+  const [sessionTasks, setSessionTasks] = useState([]);
   const [answers, setAnswers] = useState([]);
   const [started, setStarted] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -27,13 +27,68 @@ export default function SessionDetails() {
   const [isPassed, setIsPassed] = useState(false);
   const [confetti, setConfetti] = useState([]);
 
+  const [timeLeft, setTimeLeft] = useState(300);
+
   const userId = auth.currentUser?.uid;
+  const storageKey = `quiz_timer_${id}_${userId}`;
+
+  // 🚀 استخدام useRef للحفاظ على أحدث قيمة لـ answers و completed لتجنب مشاكل الـ Closure
+  const answersRef = useRef(answers);
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
+
+  const completedRef = useRef(completed);
+  useEffect(() => {
+    completedRef.current = completed;
+  }, [completed]);
 
   useEffect(() => {
     fetchSession();
     checkCompleted();
-    fetchSessionTasks(); // 🚀 جلب المهام المرتبطة عند فتح السيشن
+    fetchSessionTasks();
   }, [id]);
+
+  useEffect(() => {
+    if (!completed && id && userId) {
+      const savedQuizState = localStorage.getItem(storageKey);
+      if (savedQuizState) {
+        const { startTime, durationInSeconds } = JSON.parse(savedQuizState);
+        const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+        const remaining = durationInSeconds - elapsedSeconds;
+
+        if (remaining > 0) {
+          setTimeLeft(remaining);
+          setStarted(true);
+        } else {
+          setTimeLeft(0);
+          setStarted(true);
+        }
+      }
+    }
+  }, [id, userId, completed]);
+
+  // 🚀 التايمر المحسّن باستخدام الـ Refs لضمان العمل السليم عند انتهاء الوقت
+  useEffect(() => {
+    let timer;
+    if (started && !completed) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            // استخدام القيمة المحدثة مباشرة من الـ Ref لمنع ضياع الإجابات
+            handleSubmit(answersRef.current);
+            setError(
+              "⏰ Time is up! Your answers were submitted automatically.",
+            );
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [started, completed]);
 
   // 🔥 Auto hide messages
   useEffect(() => {
@@ -73,11 +128,18 @@ export default function SessionDetails() {
   const fetchSession = async () => {
     const snap = await getDoc(doc(db, "sessions", id));
     if (snap.exists()) {
-      setSession(snap.data());
+      const data = snap.data();
+      setSession(data);
+
+      if (!localStorage.getItem(storageKey)) {
+        const durationSec = data.quizDurationMinutes
+          ? data.quizDurationMinutes * 60
+          : 300;
+        setTimeLeft(durationSec);
+      }
     }
   };
 
-  // 🚀 دالة جلب المهام الخاصة بهذه السيشن فقط من مجموعة tasks
   const fetchSessionTasks = async () => {
     try {
       const q = query(collection(db, "tasks"), where("sessionId", "==", id));
@@ -106,11 +168,11 @@ export default function SessionDetails() {
         setScore(sessionData.score || 0);
         setAnswers(sessionData.answers || []);
         setIsPassed(sessionData.completed);
+        localStorage.removeItem(storageKey);
       }
     }
   };
 
-  // ⭐ دالة ذكية لتحويل أي صيغة رابط يوتيوب إلى رابط Embed الصحيح للتشغيل داخل Iframe
   const getEmbedUrl = (url) => {
     if (!url) return "";
     let videoId = "";
@@ -124,48 +186,68 @@ export default function SessionDetails() {
     return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
   };
 
-  const startQuiz = () => setStarted(true);
+  const startQuiz = () => {
+    const durationSec = session?.quizDurationMinutes
+      ? session.quizDurationMinutes * 60
+      : 300;
+    const startTime = Date.now();
 
-  const handleSubmit = async () => {
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({ startTime, durationInSeconds: durationSec }),
+    );
+
+    setTimeLeft(durationSec);
+    setStarted(true);
+  };
+
+  const handleSubmit = async (currentAnswers = answersRef.current) => {
     if (!session || !userId) return;
 
-    if (
-      !session.quiz ||
-      answers.length !== session.quiz.length ||
-      answers.includes(undefined)
-    ) {
-      setError("⚠️ Please answer all questions before submitting.");
-      return;
-    }
+    // منع التكرار لو تم الحفظ مسبقاً
+    if (completedRef.current) return;
 
     let finalScore = 0;
 
-    session.quiz.forEach((q, i) => {
-      if (answers[i] === q.correct) finalScore++;
-    });
+    if (session.quiz && Array.isArray(session.quiz)) {
+      session.quiz.forEach((q, i) => {
+        if (
+          currentAnswers[i] !== undefined &&
+          currentAnswers[i] === q.correct
+        ) {
+          finalScore++;
+        }
+      });
+    }
 
-    const passed = finalScore >= session.quiz.length / 2;
+    const passed = finalScore >= (session.quiz?.length || 1) / 2;
 
-    const ref = doc(db, "completedSessions", userId);
-    const snap = await getDoc(ref);
+    try {
+      const ref = doc(db, "completedSessions", userId);
+      const snap = await getDoc(ref);
+      const oldData = snap.exists() ? snap.data() : {};
 
-    const oldData = snap.exists() ? snap.data() : {};
+      await setDoc(ref, {
+        ...oldData,
+        [id]: {
+          sessionId: id,
+          score: finalScore,
+          completed: passed,
+          answers: currentAnswers,
+          timestamp: Date.now(),
+        },
+      });
+    } catch (err) {
+      console.error("Error saving quiz score:", err);
+    }
 
-    await setDoc(ref, {
-      ...oldData,
-      [id]: {
-        sessionId: id,
-        score: finalScore,
-        completed: passed,
-        answers,
-        timestamp: Date.now(),
-      },
-    });
-
+    // تحديث الحالة لتغيير واجهة المستخدم وإغلاق الامتحان فوراً
     setCompleted(true);
     setScore(finalScore);
     setIsPassed(passed);
     setStarted(false);
+
+    localStorage.removeItem(storageKey);
 
     if (passed) {
       triggerConfetti();
@@ -177,12 +259,17 @@ export default function SessionDetails() {
     setSuccessMsg("📋 Code copied to clipboard successfully!");
   };
 
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins < 10 ? "0" : ""}${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
+
   if (!session)
     return <p className="text-white text-center mt-10">Loading...</p>;
 
   return (
     <div className="min-h-screen text-white p-6 bg-gradient-to-br from-slate-950 via-blue-950 to-black relative overflow-hidden">
-      {/* 🔥 CUSTOM CONFETTI EFFECT */}
       {confetti.map((piece) => (
         <div
           key={piece.id}
@@ -199,7 +286,6 @@ export default function SessionDetails() {
         />
       ))}
 
-      {/* 🔥 Toast Notifications */}
       {error && (
         <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 animate-slideDown">
           <div className="bg-red-500/90 backdrop-blur-xl text-white px-6 py-3 rounded-2xl shadow-lg border border-red-300/30">
@@ -216,7 +302,6 @@ export default function SessionDetails() {
         </div>
       )}
 
-      {/* HEADER */}
       <div className="max-w-3xl mx-auto bg-white/5 p-6 rounded-2xl mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border border-white/5">
         <div>
           <h1 className="text-2xl font-bold">{session.title}</h1>
@@ -235,7 +320,6 @@ export default function SessionDetails() {
         )}
       </div>
 
-      {/* ================= YOUTUBE VIDEO IFRAME SECTION ================= */}
       {session.youtubeLink && (
         <div className="max-w-3xl mx-auto bg-white/5 p-4 rounded-2xl mb-6 border border-white/5 flex flex-col gap-3">
           <h2 className="text-sm font-semibold flex items-center gap-2">
@@ -253,7 +337,6 @@ export default function SessionDetails() {
         </div>
       )}
 
-      {/* ================= RESOURCES SECTION ================= */}
       {((session.sessionFile && session.sessionFile.url) ||
         (session.sessionCode && session.sessionCode.body)) && (
         <div className="max-w-3xl mx-auto bg-white/5 p-6 rounded-2xl mb-6 border border-white/5 flex flex-col gap-4">
@@ -261,7 +344,6 @@ export default function SessionDetails() {
             Session Resources
           </h2>
 
-          {/* File Download */}
           {session.sessionFile?.url && (
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-black/20 p-4 rounded-xl border border-white/5">
               <div>
@@ -281,7 +363,6 @@ export default function SessionDetails() {
             </div>
           )}
 
-          {/* Code View */}
           {session.sessionCode?.body && (
             <div className="flex flex-col gap-2 bg-black/40 rounded-xl border border-white/5 overflow-hidden">
               <div className="bg-white/5 px-4 py-2.5 flex justify-between items-center border-b border-white/5">
@@ -303,7 +384,6 @@ export default function SessionDetails() {
         </div>
       )}
 
-      {/* ================= SESSION TASKS / ASSIGNMENTS SECTION ================= */}
       {sessionTasks.length > 0 && (
         <div className="max-w-3xl mx-auto bg-white/5 p-6 rounded-2xl mb-6 border border-white/5 flex flex-col gap-4">
           <h2 className="text-lg font-bold text-blue-400 border-b border-white/10 pb-2 flex items-center gap-2">
@@ -355,7 +435,6 @@ export default function SessionDetails() {
         </div>
       )}
 
-      {/* ================= CUSTOM ANIMATED RESULT UI ================= */}
       {completed && (
         <div
           className={`max-w-3xl mx-auto mb-6 p-6 rounded-2xl border transition-all duration-700 transform scale-100 animate-popIn
@@ -404,14 +483,81 @@ export default function SessionDetails() {
               onClick={() => setShowReview(!showReview)}
               className="bg-white/5 hover:bg-white/10 text-white font-medium px-4 py-2 rounded-xl text-xs transition-colors border border-white/5"
             >
-              {" "}
               {showReview ? "Hide Quiz Review" : "Show Quiz Review"}
             </button>
           </div>
         </div>
       )}
 
-      {/* QUIZ START BUTTON / PROMPT */}
+      {completed && showReview && session.quiz && (
+        <div className="max-w-3xl mx-auto space-y-4 mb-6 animate-fadeIn">
+          <h3 className="text-xl font-bold text-indigo-300 mb-4">
+            🔍 Detailed Quiz Review
+          </h3>
+          {session.quiz.map((q, i) => {
+            const studentChoice = answers[i];
+            const isCorrect = studentChoice === q.correct;
+
+            return (
+              <div
+                key={i}
+                className={`p-5 rounded-xl border ${
+                  isCorrect
+                    ? "bg-emerald-950/20 border-emerald-500/30"
+                    : "bg-rose-950/20 border-rose-500/30"
+                }`}
+              >
+                <h4 className="font-mono text-sm text-gray-200 mb-3 bg-black/30 p-3 rounded-lg border border-white/5">
+                  {i + 1}. {q.question}
+                </h4>
+
+                <div className="space-y-2">
+                  {q.options.map((opt, j) => {
+                    let optionStyle =
+                      "bg-black/10 text-gray-300 border-transparent";
+                    let badge = null;
+
+                    if (j === q.correct) {
+                      optionStyle =
+                        "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold";
+                      badge = (
+                        <span className="float-right text-xs bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded">
+                          Correct Answer
+                        </span>
+                      );
+                    } else if (j === studentChoice && !isCorrect) {
+                      optionStyle =
+                        "bg-rose-500/20 text-rose-300 border-rose-500/40 font-bold";
+                      badge = (
+                        <span className="float-right text-xs bg-rose-500/30 text-rose-200 px-2 py-0.5 rounded">
+                          Your Choice
+                        </span>
+                      );
+                    } else if (j === studentChoice && isCorrect) {
+                      badge = (
+                        <span className="float-right text-xs bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded">
+                          Your Choice (Correct)
+                        </span>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={j}
+                        className={`p-2.5 rounded-lg text-sm border ${optionStyle}`}
+                      >
+                        <span>{opt}</span>
+                        {badge}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {!completed && !started && session.quiz && session.quiz.length > 0 && (
         <div className="max-w-3xl mx-auto bg-white/5 p-6 rounded-2xl mb-6 text-center border border-white/5">
           <h3 className="text-lg font-bold mb-2">Session Knowledge Quiz</h3>
@@ -427,9 +573,21 @@ export default function SessionDetails() {
         </div>
       )}
 
-      {/* QUIZ */}
       {!completed && started && session.quiz && (
         <div className="max-w-3xl mx-auto space-y-4">
+          <div className="sticky top-4 z-40 bg-slate-900/90 backdrop-blur-md p-4 rounded-2xl border border-white/10 flex justify-between items-center shadow-xl">
+            <div className="flex items-center gap-2 text-sm font-bold text-gray-300">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+              Quiz in Progress...
+            </div>
+            <div
+              className={`flex items-center gap-2 font-mono text-lg font-bold px-4 py-1.5 rounded-xl border ${timeLeft < 60 ? "bg-rose-500/20 text-rose-400 border-rose-500/30 animate-pulse" : "bg-blue-500/20 text-blue-300 border-blue-500/30"}`}
+            >
+              <FaClock />
+              <span>{formatTime(timeLeft)}</span>
+            </div>
+          </div>
+
           {session.quiz.map((q, i) => (
             <div
               key={i}
@@ -447,6 +605,7 @@ export default function SessionDetails() {
                   <input
                     type="radio"
                     name={`q${i}`}
+                    checked={answers[i] === j}
                     className="accent-blue-500"
                     onChange={() => {
                       const copy = [...answers];
@@ -462,10 +621,10 @@ export default function SessionDetails() {
 
           <div className="text-center pt-4">
             <button
-              onClick={handleSubmit}
+              onClick={() => handleSubmit(answers)}
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 py-3 rounded-xl transition-all shadow-lg shadow-emerald-600/25"
             >
-              Submit Quiz Answers ✅
+              Submit Quiz Answers
             </button>
           </div>
         </div>
