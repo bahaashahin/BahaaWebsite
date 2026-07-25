@@ -17,18 +17,18 @@ import {
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import certificateBg from "../assets/CateRef.png";
-import roadmapImg from "../assets/roadmapJs.png"; // استيراد صورة الرود ماب (تأكد من مسار الصورة الصحيح أو قم بتعديله)
+import roadmapImg from "../assets/roadmapJs.png"; 
 
 export default function Dashboard() {
   const [student, setStudent] = useState(null);
-  const [rawStudents, setRawStudents] = useState([]); // حفظ البيانات الخام للطلاب
-  const [students, setStudents] = useState([]); // الطلاب بعد الترتيب حسب التبويب
+  const [rawStudents, setRawStudents] = useState([]); 
+  const [students, setStudents] = useState([]); 
   const [sessionsStatus, setSessionsStatus] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [myRank, setMyRank] = useState("-");
-  const [activeTab, setActiveTab] = useState(1); // 1 للمستوى الأول، 2 للمستوى الثاني
-  const [showRoadmap, setShowRoadmap] = useState(false); // حالة إظهار وإخفاء بلوك الرود ماب
+  const [activeTab, setActiveTab] = useState(1); 
+  const [showRoadmap, setShowRoadmap] = useState(false); 
 
   const navigate = useNavigate();
 

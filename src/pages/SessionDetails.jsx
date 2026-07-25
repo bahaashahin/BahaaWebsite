@@ -1,12 +1,22 @@
 import { useEffect, useState } from "react";
 import { db, auth } from "../firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 import { useParams } from "react-router-dom";
+import { FaTasks, FaLink, FaCalendarAlt } from "react-icons/fa";
 
 export default function SessionDetails() {
   const { id } = useParams();
 
   const [session, setSession] = useState(null);
+  const [sessionTasks, setSessionTasks] = useState([]); // 🚀 قائمة المهام المرتبطة بهذه السيشن
   const [answers, setAnswers] = useState([]);
   const [started, setStarted] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -22,7 +32,8 @@ export default function SessionDetails() {
   useEffect(() => {
     fetchSession();
     checkCompleted();
-  }, []);
+    fetchSessionTasks(); // 🚀 جلب المهام المرتبطة عند فتح السيشن
+  }, [id]);
 
   // 🔥 Auto hide messages
   useEffect(() => {
@@ -61,8 +72,24 @@ export default function SessionDetails() {
 
   const fetchSession = async () => {
     const snap = await getDoc(doc(db, "sessions", id));
-    const data = snap.data();
-    setSession(data);
+    if (snap.exists()) {
+      setSession(snap.data());
+    }
+  };
+
+  // 🚀 دالة جلب المهام الخاصة بهذه السيشن فقط من مجموعة tasks
+  const fetchSessionTasks = async () => {
+    try {
+      const q = query(collection(db, "tasks"), where("sessionId", "==", id));
+      const querySnapshot = await getDocs(q);
+      const tasksList = querySnapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+      setSessionTasks(tasksList);
+    } catch (err) {
+      console.error("Error fetching session tasks:", err);
+    }
   };
 
   const checkCompleted = async () => {
@@ -102,7 +129,11 @@ export default function SessionDetails() {
   const handleSubmit = async () => {
     if (!session || !userId) return;
 
-    if (answers.length !== session.quiz.length || answers.includes(undefined)) {
+    if (
+      !session.quiz ||
+      answers.length !== session.quiz.length ||
+      answers.includes(undefined)
+    ) {
       setError("⚠️ Please answer all questions before submitting.");
       return;
     }
@@ -272,6 +303,58 @@ export default function SessionDetails() {
         </div>
       )}
 
+      {/* ================= SESSION TASKS / ASSIGNMENTS SECTION ================= */}
+      {sessionTasks.length > 0 && (
+        <div className="max-w-3xl mx-auto bg-white/5 p-6 rounded-2xl mb-6 border border-white/5 flex flex-col gap-4">
+          <h2 className="text-lg font-bold text-blue-400 border-b border-white/10 pb-2 flex items-center gap-2">
+            <FaTasks /> Required Tasks for This Session ({sessionTasks.length})
+          </h2>
+
+          <div className="space-y-3">
+            {sessionTasks.map((task) => (
+              <div
+                key={task.id}
+                className="p-4 rounded-2xl bg-black/30 border border-white/10 flex flex-col gap-2 transition-all hover:border-blue-500/30"
+              >
+                <div className="flex justify-between items-start gap-2">
+                  <h3 className="font-bold text-white text-base">
+                    {task.title}
+                  </h3>
+                  {task.points > 0 && (
+                    <span className="text-xs font-bold bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
+                      {task.points} pts
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-sm text-gray-300 whitespace-pre-line leading-relaxed">
+                  {task.description}
+                </p>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 mt-2 pt-2 border-t border-white/5 text-xs text-gray-400">
+                  {task.deadline && (
+                    <span className="flex items-center gap-1 text-rose-400 font-medium">
+                      <FaCalendarAlt /> Deadline: {task.deadline}
+                    </span>
+                  )}
+
+                  {task.formLink && (
+                    <a
+                      href={task.formLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-3 py-1.5 rounded-xl flex items-center gap-1 transition-colors ml-auto shadow-md shadow-indigo-600/20"
+                    >
+                      <FaLink className="text-[10px]" /> Submit Assignment
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ================= CUSTOM ANIMATED RESULT UI ================= */}
       {completed && (
         <div
@@ -310,7 +393,7 @@ export default function SessionDetails() {
               >
                 {score}{" "}
                 <span className="text-sm text-gray-500">
-                  / {session.quiz.length}
+                  / {session.quiz ? session.quiz.length : 0}
                 </span>
               </span>
             </div>
@@ -321,14 +404,31 @@ export default function SessionDetails() {
               onClick={() => setShowReview(!showReview)}
               className="bg-white/5 hover:bg-white/10 text-white font-medium px-4 py-2 rounded-xl text-xs transition-colors border border-white/5"
             >
+              {" "}
               {showReview ? "Hide Quiz Review" : "Show Quiz Review"}
             </button>
           </div>
         </div>
       )}
 
+      {/* QUIZ START BUTTON / PROMPT */}
+      {!completed && !started && session.quiz && session.quiz.length > 0 && (
+        <div className="max-w-3xl mx-auto bg-white/5 p-6 rounded-2xl mb-6 text-center border border-white/5">
+          <h3 className="text-lg font-bold mb-2">Session Knowledge Quiz</h3>
+          <p className="text-sm text-gray-300 mb-4">
+            Test your understanding of what you learned in this session.
+          </p>
+          <button
+            onClick={startQuiz}
+            className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-lg shadow-blue-600/20"
+          >
+            Start Quiz 🎯
+          </button>
+        </div>
+      )}
+
       {/* QUIZ */}
-      {!completed && started && (
+      {!completed && started && session.quiz && (
         <div className="max-w-3xl mx-auto space-y-4">
           {session.quiz.map((q, i) => (
             <div
@@ -353,82 +453,21 @@ export default function SessionDetails() {
                       copy[i] = j;
                       setAnswers(copy);
                     }}
-                  />
+                  />{" "}
                   <span className="ml-2 text-gray-300 text-sm">{opt}</span>
                 </label>
               ))}
             </div>
           ))}
 
-          <button
-            onClick={handleSubmit}
-            className="bg-green-600 hover:bg-green-500 transition-colors px-6 py-2.5 rounded-xl font-bold w-full sm:w-auto"
-          >
-            Submit Answers
-          </button>
-        </div>
-      )}
-
-      {!started && !completed && (
-        <div className="max-w-3xl mx-auto text-center py-10 bg-white/5 rounded-2xl border border-white/5">
-          <p className="text-gray-400 mb-4 text-sm">
-            Test your understanding of this session by taking a quick quiz!
-          </p>
-          <button
-            onClick={startQuiz}
-            className="bg-blue-600 hover:bg-blue-500 transition-colors px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-600/20"
-          >
-            Start Quiz
-          </button>
-        </div>
-      )}
-
-      {/* REVIEW */}
-      {showReview && completed && (
-        <div className="max-w-3xl mx-auto mt-6 space-y-4 animate-fadeIn">
-          <h3 className="text-lg font-bold text-gray-400 mb-2">
-            Review Questions:
-          </h3>
-          {session.quiz.map((q, i) => (
-            <div
-              key={i}
-              className="p-4 bg-white/5 rounded-xl border border-white/5"
+          <div className="text-center pt-4">
+            <button
+              onClick={handleSubmit}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 py-3 rounded-xl transition-all shadow-lg shadow-emerald-600/25"
             >
-              <h3 className="font-semibold text-gray-200 text-sm leading-relaxed whitespace-pre-wrap font-mono bg-black/20 p-3 rounded-xl border border-white/5 mb-3">
-                {i + 1}. {q.question}
-              </h3>
-
-              {q.options.map((opt, j) => {
-                const isCorrect = j === q.correct;
-                const isUser = j === answers[i];
-
-                return (
-                  <div
-                    key={j}
-                    className={`p-2.5 rounded-lg mt-2 text-sm flex items-center justify-between ${
-                      isCorrect
-                        ? "bg-green-500/20 border border-green-500/30 text-green-300 font-medium"
-                        : isUser
-                          ? "bg-red-500/20 border border-red-500/30 text-red-300"
-                          : "bg-black/10 text-gray-400"
-                    }`}
-                  >
-                    <span>{opt}</span>
-                    {isCorrect && (
-                      <span className="text-xs bg-green-500/20 px-2 py-0.5 rounded text-green-300 font-bold">
-                        Correct Answer
-                      </span>
-                    )}
-                    {isUser && !isCorrect && (
-                      <span className="text-xs bg-red-500/20 px-2 py-0.5 rounded text-red-300 font-bold">
-                        Your Answer
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+              Submit Quiz Answers ✅
+            </button>
+          </div>
         </div>
       )}
     </div>

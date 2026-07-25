@@ -20,6 +20,7 @@ import {
   FaLink,
   FaTasks,
   FaExclamationTriangle,
+  FaLayerGroup,
 } from "react-icons/fa";
 import Message from "../components/Message";
 import useAdmin from "../hooks/useAdmin";
@@ -27,6 +28,7 @@ import useAdmin from "../hooks/useAdmin";
 export default function AdminTasks() {
   const { isAdmin, loading: adminLoading } = useAdmin();
   const [tasks, setTasks] = useState([]);
+  const [sessions, setSessions] = useState([]); // قائمة السيشنز للاختيار منها
   const [adminMessage, setAdminMessage] = useState("");
   const [newTask, setNewTask] = useState({
     title: "",
@@ -34,6 +36,7 @@ export default function AdminTasks() {
     deadline: "",
     points: "",
     formLink: "",
+    sessionId: "", // حقل ربط التاسك بالسيشن
     type: "task",
   });
   const [message, setMessage] = useState(null);
@@ -53,12 +56,14 @@ export default function AdminTasks() {
 
   const fetchData = async () => {
     try {
-      const [tasksSnap, settingsSnap] = await Promise.all([
+      const [tasksSnap, settingsSnap, sessionsSnap] = await Promise.all([
         getDocs(collection(db, "tasks")),
         getDoc(doc(db, "settings", "main")),
+        getDocs(collection(db, "sessions")), // جلب السيشنز
       ]);
 
       setTasks(tasksSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setSessions(sessionsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
 
       if (settingsSnap.exists()) {
         setAdminMessage(settingsSnap.data().message || "");
@@ -106,6 +111,7 @@ export default function AdminTasks() {
         deadline: "",
         points: "",
         formLink: "",
+        sessionId: "",
         type: "task",
       });
 
@@ -135,7 +141,6 @@ export default function AdminTasks() {
     } catch (err) {
       setMessage({ text: "فشل حذف المهمة", type: "error" });
     } finally {
-      // إغلاق المودال وتصفيره
       setConfirmModal({ isOpen: false, taskId: null, taskTitle: "" });
     }
   };
@@ -225,9 +230,40 @@ export default function AdminTasks() {
               }
             />
 
+            {/* اختيار السيشن التابع له المهمة */}
+            <div className="relative">
+              <label className="text-xs text-slate-400 block mb-1 font-medium pl-1">
+                Link to Session (Optional)
+              </label>
+              <div className="relative">
+                <FaLayerGroup className="absolute left-3 top-3.5 text-slate-500 text-xs" />
+                <select
+                  className="w-full p-3 pl-9 rounded-xl bg-slate-950/60 border border-white/10 outline-none text-white focus:border-blue-500 transition-colors cursor-pointer appearance-none"
+                  value={newTask.sessionId}
+                  onChange={(e) =>
+                    setNewTask({ ...newTask, sessionId: e.target.value })
+                  }
+                >
+                  <option value="" className="bg-slate-900 text-slate-400">
+                    -- General Task (No specific session) --
+                  </option>
+                  {sessions.map((session) => (
+                    <option
+                      key={session.id}
+                      value={session.id}
+                      className="bg-slate-950 text-white"
+                    >
+                      {session.title || session.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* تم السماح بنزول الأسطر بحرية وكتابة متعددة */}
             <textarea
-              className="w-full p-3 rounded-xl bg-slate-950/60 border border-white/10 outline-none text-white placeholder-slate-500 h-24 focus:border-blue-500 transition-colors resize-none"
-              placeholder="Task Description and Instructions..."
+              className="w-full p-3 rounded-xl bg-slate-950/60 border border-white/10 outline-none text-white placeholder-slate-500 h-32 focus:border-blue-500 transition-colors resize-y"
+              placeholder="Task Description and Instructions (Supports new lines)..."
               value={newTask.description}
               onChange={(e) =>
                 setNewTask({ ...newTask, description: e.target.value })
@@ -291,83 +327,96 @@ export default function AdminTasks() {
             <FaTasks className="text-xs" /> Active Dashboard Tasks (
             {tasks.length})
           </h3>
-          {tasks.map((task) => (
-            <div
-              key={task.id}
-              className={`p-5 rounded-3xl bg-white/5 backdrop-blur-xl border shadow-lg hover:scale-[1.01] transition-all duration-200 flex flex-col justify-between gap-4 ${
-                task.active
-                  ? "border-white/10"
-                  : "border-red-500/20 bg-red-950/5"
-              }`}
-            >
-              <div className="min-w-0">
-                <div className="flex items-start justify-between gap-4">
-                  <h3 className="font-bold text-lg text-white truncate flex-1">
-                    {task.title}
-                  </h3>
-                  <span
-                    className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full shrink-0 ${task.active ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20" : "bg-red-500/20 text-red-400 border border-red-500/20"}`}
-                  >
-                    {task.active ? "Visible" : "Hidden"}
-                  </span>
-                </div>
-                <p className="text-slate-300 text-sm mt-1.5 leading-relaxed break-words">
-                  {task.description}
-                </p>
-
-                {task.formLink && (
-                  <p className="text-xs text-indigo-400 truncate mt-2 flex items-center gap-1.5 bg-indigo-950/30 p-2 rounded-xl border border-indigo-500/10">
-                    <FaLink className="text-[10px]" /> Form:{" "}
-                    <a
-                      href={task.formLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline text-indigo-300 hover:text-indigo-200"
+          {tasks.map((task) => {
+            const linkedSession = sessions.find((s) => s.id === task.sessionId);
+            return (
+              <div
+                key={task.id}
+                className={`p-5 rounded-3xl bg-white/5 backdrop-blur-xl border shadow-lg hover:scale-[1.01] transition-all duration-200 flex flex-col justify-between gap-4 ${
+                  task.active
+                    ? "border-white/10"
+                    : "border-red-500/20 bg-red-950/5"
+                }`}
+              >
+                <div className="min-w-0">
+                  <div className="flex items-start justify-between gap-4">
+                    <h3 className="font-bold text-lg text-white truncate flex-1">
+                      {task.title}
+                    </h3>
+                    <span
+                      className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full shrink-0 ${task.active ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20" : "bg-red-500/20 text-red-400 border border-red-500/20"}`}
                     >
-                      {task.formLink}
-                    </a>
-                  </p>
-                )}
+                      {task.active ? "Visible" : "Hidden"}
+                    </span>
+                  </div>
 
-                <div className="flex gap-4 text-xs text-slate-400 mt-3 pt-3 border-t border-white/5 font-medium">
-                  <p>
-                    Points:{" "}
-                    <span className="text-blue-400 font-bold">
-                      {task.points || 0} pts
-                    </span>
+                  {/* عرض السيشن المرتبط إن وجد */}
+                  {linkedSession && (
+                    <p className="text-[11px] text-blue-400 mt-1 inline-flex items-center gap-1 bg-blue-950/30 px-2 py-0.5 rounded-lg border border-blue-500/10">
+                      <FaLayerGroup className="text-[9px]" /> Session:{" "}
+                      {linkedSession.title || linkedSession.id}
+                    </p>
+                  )}
+
+                  {/* استخدام whitespace-pre-line للسماح بنزول الأسطر بشكل صحيح */}
+                  <p className="text-slate-300 text-sm mt-2 leading-relaxed break-words whitespace-pre-line">
+                    {task.description}
                   </p>
-                  <p>
-                    Deadline:{" "}
-                    <span className="text-rose-400 font-bold">
-                      {task.deadline || "Open"}
-                    </span>
-                  </p>
+
+                  {task.formLink && (
+                    <p className="text-xs text-indigo-400 truncate mt-2 flex items-center gap-1.5 bg-indigo-950/30 p-2 rounded-xl border border-indigo-500/10">
+                      <FaLink className="text-[10px]" /> Form:{" "}
+                      <a
+                        href={task.formLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline text-indigo-300 hover:text-indigo-200"
+                      >
+                        {task.formLink}
+                      </a>
+                    </p>
+                  )}
+
+                  <div className="flex gap-4 text-xs text-slate-400 mt-3 pt-3 border-t border-white/5 font-medium">
+                    <p>
+                      Points:{" "}
+                      <span className="text-blue-400 font-bold">
+                        {task.points || 0} pts
+                      </span>
+                    </p>
+                    <p>
+                      Deadline:{" "}
+                      <span className="text-rose-400 font-bold">
+                        {task.deadline || "Open"}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* أزرار التحكم */}
+                <div className="grid grid-cols-2 gap-3 text-xs font-bold pt-1">
+                  <button
+                    className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                      task.active
+                        ? "bg-amber-600/20 border border-amber-500/30 text-amber-400 hover:bg-amber-600/30"
+                        : "bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-600/30"
+                    }`}
+                    onClick={() => toggleActive(task.id, task.active)}
+                  >
+                    {task.active ? <FaToggleOff /> : <FaToggleOn />}
+                    {task.active ? "Hide Task" : "Show Task"}
+                  </button>
+
+                  <button
+                    className="py-2.5 rounded-xl bg-rose-600/10 border border-rose-500/20 text-rose-400 hover:bg-rose-600/20 hover:border-rose-500/40 transition-all flex items-center justify-center gap-1.5"
+                    onClick={() => triggerDeleteConfirm(task.id, task.title)}
+                  >
+                    <FaTrashAlt className="text-[10px]" /> Delete
+                  </button>
                 </div>
               </div>
-
-              {/* أزرار التحكم */}
-              <div className="grid grid-cols-2 gap-3 text-xs font-bold pt-1">
-                <button
-                  className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                    task.active
-                      ? "bg-amber-600/20 border border-amber-500/30 text-amber-400 hover:bg-amber-600/30"
-                      : "bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-600/30"
-                  }`}
-                  onClick={() => toggleActive(task.id, task.active)}
-                >
-                  {task.active ? <FaToggleOff /> : <FaToggleOn />}
-                  {task.active ? "Hide Task" : "Show Task"}
-                </button>
-
-                <button
-                  className="py-2.5 rounded-xl bg-rose-600/10 border border-rose-500/20 text-rose-400 hover:bg-rose-600/20 hover:border-rose-500/40 transition-all flex items-center justify-center gap-1.5"
-                  onClick={() => triggerDeleteConfirm(task.id, task.title)}
-                >
-                  <FaTrashAlt className="text-[10px]" /> Delete
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {tasks.length === 0 && (
             <div className="text-center py-12 text-slate-500 text-sm bg-white/5 border border-white/10 rounded-3xl">
@@ -422,7 +471,6 @@ export default function AdminTasks() {
         </div>
       )}
 
-      {/* رسائل الـ Toast العادية */}
       {message && (
         <Message
           text={message.text}
