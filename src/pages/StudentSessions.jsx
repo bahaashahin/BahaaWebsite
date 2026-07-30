@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { db, auth } from "../firebase";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
-import { FaLock, FaLayerGroup, FaPlay } from "react-icons/fa";
+import { FaLock, FaLayerGroup, FaPlay, FaStar } from "react-icons/fa";
 
 export default function StudentSessions() {
   const [sessions, setSessions] = useState([]);
@@ -171,6 +171,7 @@ export default function StudentSessions() {
                 const data = completedMap?.[s.id];
                 const isCompleted = data?.completed === true;
                 const score = data?.score;
+                const rating = data?.rating || 0; // تقييم الطالب إن وجد
                 const sessionLvl =
                   s.level !== undefined ? s.level : s.Level || 1;
 
@@ -224,12 +225,34 @@ export default function StudentSessions() {
                     <div>
                       {/* STATUS */}
                       {isCompleted && (
-                        <div className="mt-4 text-green-300 text-sm font-semibold flex items-center gap-1">
-                          <span>✓ Completed</span>
-                          <span className="text-gray-500">•</span>
-                          <span>
-                            Score: {score} / {s.quiz?.length || 0}
-                          </span>
+                        <div className="mt-4 space-y-2">
+                          <div className="text-green-300 text-sm font-semibold flex items-center gap-1">
+                            <span>✓ Completed</span>
+                            <span className="text-gray-500">•</span>
+                            <span>
+                              Score: {score} / {s.quiz?.length || 0}
+                            </span>
+                          </div>
+
+                          {/* STARS FEEDBACK DISPLAY */}
+                          {rating > 0 && (
+                            <div className="flex items-center gap-1 bg-black/20 px-3 py-1.5 rounded-xl border border-white/5 w-fit">
+                              <span className="text-xs text-gray-400 mr-1">
+                                Your Rating:
+                              </span>
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <FaStar
+                                  key={star}
+                                  size={12}
+                                  className={
+                                    rating >= star
+                                      ? "text-yellow-400"
+                                      : "text-gray-600"
+                                  }
+                                />
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
 

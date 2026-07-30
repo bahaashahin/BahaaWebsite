@@ -10,7 +10,13 @@ import {
   where,
 } from "firebase/firestore";
 import { useParams } from "react-router-dom";
-import { FaTasks, FaLink, FaCalendarAlt, FaClock } from "react-icons/fa";
+import {
+  FaTasks,
+  FaLink,
+  FaCalendarAlt,
+  FaClock,
+  FaStar,
+} from "react-icons/fa";
 
 export default function SessionDetails() {
   const { id } = useParams();
@@ -26,6 +32,12 @@ export default function SessionDetails() {
   const [successMsg, setSuccessMsg] = useState("");
   const [isPassed, setIsPassed] = useState(false);
   const [confetti, setConfetti] = useState([]);
+
+  // States for feedback and ratings
+  const [feedback, setFeedback] = useState("");
+  const [rating, setRating] = useState(0);
+  const [isFeedbackSubmitted, setIsFeedbackSubmitted] = useState(false);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
   const [timeLeft, setTimeLeft] = useState(300);
 
@@ -163,13 +175,61 @@ export default function SessionDetails() {
       const data = snap.data();
       const sessionData = data?.[id];
 
-      if (sessionData?.completed !== undefined) {
-        setCompleted(true);
-        setScore(sessionData.score || 0);
-        setAnswers(sessionData.answers || []);
-        setIsPassed(sessionData.completed);
-        localStorage.removeItem(storageKey);
+      if (sessionData) {
+        if (sessionData.completed !== undefined) {
+          setCompleted(true);
+          setScore(sessionData.score || 0);
+          setAnswers(sessionData.answers || []);
+          setIsPassed(sessionData.completed);
+          localStorage.removeItem(storageKey);
+        }
+
+        // Load existing feedback and rating if present
+        if (sessionData.feedback) {
+          setFeedback(sessionData.feedback);
+          setIsFeedbackSubmitted(true);
+        }
+        if (sessionData.rating) {
+          setRating(sessionData.rating);
+        }
       }
+    }
+  };
+
+  // Handle saving feedback and rating independently
+  const handleSaveFeedback = async () => {
+    if (!userId || rating === 0) {
+      setError("Please select at least a star rating before submitting.");
+      return;
+    }
+    setSubmittingFeedback(true);
+    try {
+      const ref = doc(db, "completedSessions", userId);
+      const snap = await getDoc(ref);
+      const oldData = snap.exists() ? snap.data() : {};
+
+      await setDoc(
+        ref,
+        {
+          ...oldData,
+          [id]: {
+            ...(oldData[id] || {}),
+            feedback: feedback,
+            rating: rating,
+          },
+        },
+        { merge: true },
+      );
+
+      setIsFeedbackSubmitted(true);
+      setSuccessMsg(
+        "⭐ Thank you! Your feedback has been submitted successfully.",
+      );
+    } catch (err) {
+      console.error("Error saving feedback:", err);
+      setError("Failed to submit feedback. Please try again.");
+    } finally {
+      setSubmittingFeedback(false);
     }
   };
 
@@ -230,6 +290,7 @@ export default function SessionDetails() {
       await setDoc(ref, {
         ...oldData,
         [id]: {
+          ...(oldData[id] || {}),
           sessionId: id,
           score: finalScore,
           completed: passed,
@@ -557,6 +618,61 @@ export default function SessionDetails() {
           })}
         </div>
       )}
+
+      {/* 🌟 INDEPENDENT SESSION FEEDBACK & RATING SECTION */}
+      <div className="max-w-3xl mx-auto bg-white/5 p-6 rounded-2xl mb-6 border border-white/5 flex flex-col gap-3">
+        <h3 className="text-lg font-bold text-yellow-400 border-b border-white/10 pb-2 flex items-center gap-2">
+          <FaStar /> Rate & Review this Session
+        </h3>
+        <p className="text-sm text-gray-300">
+          Share your thoughts or rate this session to help us improve!
+        </p>
+
+        <div className="flex gap-1 mt-1">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              type="button"
+              key={star}
+              disabled={isFeedbackSubmitted}
+              onClick={() => !isFeedbackSubmitted && setRating(star)}
+              className={`focus:outline-none ${isFeedbackSubmitted ? "cursor-default" : "cursor-pointer"}`}
+            >
+              <FaStar
+                size={22}
+                className={
+                  rating >= star
+                    ? "text-yellow-400"
+                    : "text-gray-600 hover:text-gray-400"
+                }
+              />
+            </button>
+          ))}
+        </div>
+
+        <textarea
+          value={feedback}
+          disabled={isFeedbackSubmitted}
+          onChange={(e) => setFeedback(e.target.value)}
+          placeholder="Write your feedback about this session..."
+          className={`w-full bg-black/30 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-blue-500 resize-none h-24 ${isFeedbackSubmitted ? "opacity-75 cursor-not-allowed" : ""}`}
+        />
+
+        {!isFeedbackSubmitted && (
+          <button
+            onClick={handleSaveFeedback}
+            disabled={submittingFeedback}
+            className="self-end bg-blue-600 hover:bg-blue-500 text-white font-medium px-5 py-2.5 rounded-xl text-xs transition-colors shadow-lg shadow-blue-600/20"
+          >
+            {submittingFeedback ? "Submitting..." : "Submit Feedback"}
+          </button>
+        )}
+
+        {isFeedbackSubmitted && (
+          <p className="text-xs text-emerald-400 font-medium flex items-center gap-1 mt-1">
+            ✓ Feedback submitted successfully and locked.
+          </p>
+        )}
+      </div>
 
       {!completed && !started && session.quiz && session.quiz.length > 0 && (
         <div className="max-w-3xl mx-auto bg-white/5 p-6 rounded-2xl mb-6 text-center border border-white/5">
