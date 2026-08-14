@@ -17,18 +17,18 @@ import {
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import certificateBg from "../assets/CateRef.png";
-import roadmapImg from "../assets/roadmapJs.png"; 
+import roadmapImg from "../assets/roadmapJs.png";
 
 export default function Dashboard() {
   const [student, setStudent] = useState(null);
-  const [rawStudents, setRawStudents] = useState([]); 
-  const [students, setStudents] = useState([]); 
+  const [rawStudents, setRawStudents] = useState([]);
+  const [students, setStudents] = useState([]);
   const [sessionsStatus, setSessionsStatus] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [myRank, setMyRank] = useState("-");
-  const [activeTab, setActiveTab] = useState(1); 
-  const [showRoadmap, setShowRoadmap] = useState(false); 
+  const [activeTab, setActiveTab] = useState(1);
+  const [showRoadmap, setShowRoadmap] = useState(false);
 
   const navigate = useNavigate();
 
@@ -75,9 +75,9 @@ export default function Dashboard() {
             id: sessionId,
             name: sessionData.title || sessionId,
             completed: userSession.completed || false,
-            score: userSession.score || 0,
+            score: Number(userSession.score || 0),
             createdAt: sessionData.createdAt || 0,
-            level: sessionData.level || 1,
+            level: Number(sessionData.level || 1),
           });
         });
         sessionsArr.sort((a, b) => b.createdAt - a.createdAt);
@@ -111,19 +111,36 @@ export default function Dashboard() {
     );
   };
 
-  // دالة حساب نقاط المستوى الثاني
-  const calculateLevel2Points = (user) => {
+  // دالة حساب نقاط المستوى الثاني الخاصة بالطالب الحالي فقط
+  const calculateLevel2Points = (user, currentSessions = []) => {
     if (!user?.points) return 0;
-    return user.points.PointLevel2 || 0;
+    let baseL2 = user.points.PointLevel2 || 0;
+
+    let sessionsScoreL2 = 0;
+    currentSessions.forEach((session) => {
+      if (session.level === 2 && session.completed) {
+        sessionsScoreL2 += session.score;
+      }
+    });
+
+    return baseL2 + sessionsScoreL2;
   };
 
-  // إعادة حساب الترتيب والنقاط كلما تغير التبويب النشط (ActiveTab)
+  // إعادة حساب الترتيب والنقاط للـ Leaderboard لكل طالب بشكل مستقل ومنع تداخل السشنز
   useEffect(() => {
     if (rawStudents.length === 0) return;
 
     const processedStudents = rawStudents.map((s) => {
       const l1 = calculateLevel1Points(s);
-      const l2 = calculateLevel2Points(s);
+
+      // للمستوى الثاني، نعتمد على الأساسيات الموجودة في وثيقة كل طالب تفادياً لتطبيق سشنز طالب واحد على البقية
+      let l2 = s.points?.PointLevel2 || 0;
+
+      // لو كان الطالب الحالي هو نفس الـ s في اللوب، يمكننا دمج نقاط السشنز الخاصة به بدقة
+      if (s.id === auth.currentUser?.uid) {
+        l2 = calculateLevel2Points(s, sessionsStatus);
+      }
+
       const currentPoints = activeTab === 2 ? l2 : l1;
       return {
         ...s,
@@ -141,7 +158,7 @@ export default function Dashboard() {
     } else {
       setMyRank("-");
     }
-  }, [activeTab, rawStudents]);
+  }, [activeTab, rawStudents, sessionsStatus]);
 
   const certificateRef = useRef(null);
 
@@ -181,7 +198,7 @@ export default function Dashboard() {
   if (loading) return <SkeletonLoader />;
 
   const level1Points = calculateLevel1Points(student);
-  const level2Points = calculateLevel2Points(student);
+  const level2Points = calculateLevel2Points(student, sessionsStatus);
   const currentPoints = activeTab === 2 ? level2Points : level1Points;
   const topStudent = students[0];
   const isLvl2 = activeTab === 2;
@@ -279,7 +296,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* زر إظهار/إخفاء الرود ماب الاحترافي تحت كارد بيانات الطالب مباشرة */}
+        {/* زر إظهار/إخفاء الرود ماب */}
         <div>
           <button
             onClick={() => setShowRoadmap(!showRoadmap)}
@@ -302,7 +319,6 @@ export default function Dashboard() {
             />
           </button>
 
-          {/* بلوك عرض الرود ماب المنسدل */}
           {showRoadmap && (
             <div className="mt-3 p-4 sm:p-6 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-xl animate-fadeIn space-y-4">
               <div className="flex items-center justify-between border-b border-white/10 pb-3">

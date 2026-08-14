@@ -12,7 +12,7 @@ import {
   FaUsers,
 } from "react-icons/fa";
 
-import heroImage from "../assets/bahaaa.png";
+import heroImage from "../assets/bahaaa.jpg";
 import logo1 from "../assets/css.svg";
 import logo2 from "../assets/js.svg";
 import logo3 from "../assets/bootstrap.svg";
