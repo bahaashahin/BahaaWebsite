@@ -3,7 +3,13 @@ import { useRef } from "react";
 import { toPng } from "html-to-image";
 import jsPDF from "jspdf";
 import { auth, db } from "../firebase";
-import { doc, getDoc, collection, getDocs } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  collection,
+  getDocs,
+  updateDoc,
+} from "firebase/firestore";
 import {
   FaCheck,
   FaTimes,
@@ -42,14 +48,21 @@ export default function Dashboard() {
       const uid = user.uid;
 
       try {
-        const [adminSnap, docSnap, completedSnap, sessionsSnap, rankingSnap] =
-          await Promise.all([
-            getDoc(doc(db, "admins", uid)).catch(() => null),
-            getDoc(doc(db, "students", uid)),
-            getDoc(doc(db, "completedSessions", uid)),
-            getDocs(collection(db, "sessions")),
-            getDocs(collection(db, "students")),
-          ]);
+        const [
+          adminSnap,
+          docSnap,
+          completedSnap,
+          sessionsSnap,
+          rankingSnap,
+          allCompletedSnap,
+        ] = await Promise.all([
+          getDoc(doc(db, "admins", uid)).catch(() => null),
+          getDoc(doc(db, "students", uid)),
+          getDoc(doc(db, "completedSessions", uid)),
+          getDocs(collection(db, "sessions")),
+          getDocs(collection(db, "students")),
+          getDocs(collection(db, "completedSessions")),
+        ]);
 
         if (adminSnap && adminSnap.exists()) setIsAdmin(true);
 
@@ -83,10 +96,45 @@ export default function Dashboard() {
         sessionsArr.sort((a, b) => b.createdAt - a.createdAt);
         setSessionsStatus(sessionsArr);
 
+        // حساب مجموع نقاط Level 2 Sessions لكل الطلاب
+        const level2SessionsScores = {};
+
+        allCompletedSnap.forEach((docSnap) => {
+          const studentUid = docSnap.id;
+          const completedData = docSnap.data();
+
+          let total = 0;
+
+          sessionsArr.forEach((session) => {
+            if (session.level === 2) {
+              const userSession = completedData[session.id];
+
+              if (userSession?.completed) {
+                total += Number(userSession.score || 0);
+              }
+            }
+          });
+
+          level2SessionsScores[studentUid] = total;
+        });
+
+        // 🔥 التعديل هنا: دمج بيانات نقاط السشنز المحسوبة مع بيانات الطلاب قبل حفظهم في الـ State
         const allStudents = [];
         rankingSnap.forEach((d) => {
-          const data = d.data();
-          allStudents.push({ id: d.id, ...data });
+          const studentId = d.id;
+          const data =
+            studentId === uid ? { ...d.data(), ...studentData } : d.data();
+
+          // التأكد من وجود كائن points
+          if (!data.points) {
+            data.points = {};
+          }
+
+          // دمج النقاط الديناميكية التي تم حسابها من allCompletedSnap لكل طالب
+          const dynamicSessionsScoreL2 = level2SessionsScores[studentId] || 0;
+          data.points.sessionsScoreL2 = dynamicSessionsScoreL2;
+
+          allStudents.push({ id: studentId, ...data });
         });
 
         setRawStudents(allStudents);
@@ -111,37 +159,92 @@ export default function Dashboard() {
     );
   };
 
-  // دالة حساب نقاط المستوى الثاني الخاصة بالطالب الحالي فقط
-  const calculateLevel2Points = (user, currentSessions = []) => {
+  // دالة حساب نقاط المستوى الثاني شاملة السشنز
+  const calculateLevel2Points = (user) => {
     if (!user?.points) return 0;
-    let baseL2 = user.points.PointLevel2 || 0;
 
-    let sessionsScoreL2 = 0;
-    currentSessions.forEach((session) => {
-      if (session.level === 2 && session.completed) {
-        sessionsScoreL2 += session.score;
-      }
-    });
+    const baseL2 = Number(user.points.PointLevel2 || 0);
+    const sessionsScoreL2 = Number(user.points.sessionsScoreL2 || 0);
 
     return baseL2 + sessionsScoreL2;
   };
 
-  // إعادة حساب الترتيب والنقاط للـ Leaderboard لكل طالب بشكل مستقل ومنع تداخل السشنز
+  // حفظ مجموع نقاط Sessions Level 2 في Firebase
+  useEffect(() => {
+    const updateMyTotalPointsInDB = async () => {
+      const currentUser = auth.currentUser;
+
+      if (!currentUser || sessionsStatus.length === 0) return;
+
+      let sessionsScoreL2 = 0;
+
+      sessionsStatus.forEach((session) => {
+        if (session.level === 2 && session.completed) {
+          sessionsScoreL2 += Number(session.score || 0);
+        }
+      });
+
+      try {
+        const studentRef = doc(db, "students", currentUser.uid);
+        const studentSnap = await getDoc(studentRef);
+
+        if (!studentSnap.exists()) return;
+
+        const studentData = studentSnap.data();
+        const currentPoints = studentData.points || {};
+
+        const currentSessionsScoreL2 = Number(
+          currentPoints.sessionsScoreL2 || 0,
+        );
+
+        if (currentSessionsScoreL2 !== sessionsScoreL2) {
+          await updateDoc(studentRef, {
+            "points.sessionsScoreL2": sessionsScoreL2,
+          });
+
+          console.log("✅ sessionsScoreL2 updated:", sessionsScoreL2);
+
+          // تحديث بيانات الطالب في Dashboard
+          setStudent((prev) => ({
+            ...prev,
+            points: {
+              ...(prev?.points || {}),
+              sessionsScoreL2,
+            },
+          }));
+
+          // تحديث نفس الطالب داخل بيانات الـ Ranking
+          setRawStudents((prev) =>
+            prev.map((s) =>
+              s.id === currentUser.uid
+                ? {
+                    ...s,
+                    points: {
+                      ...(s.points || {}),
+                      sessionsScoreL2,
+                    },
+                  }
+                : s,
+            ),
+          );
+        }
+      } catch (error) {
+        console.error("❌ Error updating sessions score in DB:", error);
+      }
+    };
+
+    updateMyTotalPointsInDB();
+  }, [sessionsStatus]);
+
+  // إعادة حساب الترتيب والنقاط للـ Leaderboard لكل طالب مع دمج بيانات الطالب المحدثة
   useEffect(() => {
     if (rawStudents.length === 0) return;
 
     const processedStudents = rawStudents.map((s) => {
       const l1 = calculateLevel1Points(s);
-
-      // للمستوى الثاني، نعتمد على الأساسيات الموجودة في وثيقة كل طالب تفادياً لتطبيق سشنز طالب واحد على البقية
-      let l2 = s.points?.PointLevel2 || 0;
-
-      // لو كان الطالب الحالي هو نفس الـ s في اللوب، يمكننا دمج نقاط السشنز الخاصة به بدقة
-      if (s.id === auth.currentUser?.uid) {
-        l2 = calculateLevel2Points(s, sessionsStatus);
-      }
-
+      const l2 = calculateLevel2Points(s);
       const currentPoints = activeTab === 2 ? l2 : l1;
+
       return {
         ...s,
         totalPoints: currentPoints,
@@ -198,7 +301,7 @@ export default function Dashboard() {
   if (loading) return <SkeletonLoader />;
 
   const level1Points = calculateLevel1Points(student);
-  const level2Points = calculateLevel2Points(student, sessionsStatus);
+  const level2Points = calculateLevel2Points(student);
   const currentPoints = activeTab === 2 ? level2Points : level1Points;
   const topStudent = students[0];
   const isLvl2 = activeTab === 2;
@@ -597,6 +700,7 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* سكشن الرنك */}
           <div className="md:col-span-2 bg-white/5 border border-white/10 p-5 sm:p-6 rounded-3xl backdrop-blur-xl h-fit">
             <h2 className="text-base sm:text-lg font-bold mb-4 text-center border-b border-white/10 pb-3">
               Global Ranking (Level {activeTab})
