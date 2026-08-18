@@ -66,8 +66,7 @@ export default function Home() {
       <Navbar />
 
       {/* ================= HERO SECTION ================= */}
-      {/* تم زيادة الـ padding من فوق للشاشات الكبيرة (lg:pt-48) لمنع التداخل مع الـ Navbar */}
-      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 sm:pt-40 lg:pt-48 pb-12">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 sm:pt-40 lg:pt-12 pb-12">
         <section className="flex flex-col-reverse md:flex-row items-center justify-between bg-white/[0.02] border border-white/5 backdrop-blur-2xl p-6 sm:p-10 md:p-12 rounded-[2.5rem] shadow-2xl shadow-black/40 gap-8 md:gap-12 animate-fadeIn relative group overflow-hidden">
           <div className="absolute -inset-px bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-opacity duration-700 -z-10" />
 
