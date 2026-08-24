@@ -560,6 +560,20 @@ export default function Dashboard() {
             <p className="mt-3 text-2xl font-black text-emerald-300">
               Level 2 Score: {level2Points} pts
             </p>
+
+            {/* رسالة التحذير للطلاب الأقل من 100 نقطة */}
+            {level2Points < 100 && (
+              <div className="mt-5 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl inline-block max-w-lg mx-auto">
+                <p className="text-red-400 font-bold text-sm sm:text-base flex items-center justify-center gap-2">
+                  <FaTimes className="text-lg" />
+                  ⚠️ تحذير: نقاطك أقل من 100!
+                </p>
+                <p className="text-red-300/80 text-xs sm:text-sm mt-2 leading-relaxed">
+                  يجب عليك الالتزام بحضور السيشنز وتسليم المهام المطلوبة لتجنب
+                  الاستبعاد من المستوى الثاني. نرجو منك العمل بجد لرفع نقاطك.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
