@@ -119,7 +119,8 @@ function App() {
     <Router>
       <Navbar user={user} role={role} />
 
-      <div className="md:ml-64 md:mt-0 min-h-screen bg-gray-100 font-sans selection:bg-blue-500 selection:text-white">
+      <div className="min-h-screen pt-16 md:pt-0 md:ml-64 lg:ml-72 bg-slate-950 font-sans selection:bg-indigo-500/30 selection:text-white transition-all duration-300">
+        {" "}
         <Routes>
           <Route path="/" element={<Home />} />
           <Route

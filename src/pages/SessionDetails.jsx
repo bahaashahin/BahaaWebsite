@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { db, auth } from "../firebase";
+
 import {
   doc,
   getDoc,
@@ -9,13 +10,20 @@ import {
   query,
   where,
 } from "firebase/firestore";
+
 import { useParams } from "react-router-dom";
+
 import {
   FaTasks,
   FaLink,
   FaCalendarAlt,
   FaClock,
   FaStar,
+  FaTelegramPlane,
+  FaPlay,
+  FaCheckCircle,
+  FaCopy,
+  FaDownload,
 } from "react-icons/fa";
 
 export default function SessionDetails() {
@@ -42,15 +50,18 @@ export default function SessionDetails() {
   const [timeLeft, setTimeLeft] = useState(300);
 
   const userId = auth.currentUser?.uid;
+
   const storageKey = `quiz_timer_${id}_${userId}`;
 
-  // 🚀 استخدام useRef للحفاظ على أحدث قيمة لـ answers و completed لتجنب مشاكل الـ Closure
+  // الحفاظ على أحدث قيمة للإجابات
   const answersRef = useRef(answers);
+
   useEffect(() => {
     answersRef.current = answers;
   }, [answers]);
 
   const completedRef = useRef(completed);
+
   useEffect(() => {
     completedRef.current = completed;
   }, [completed]);
@@ -64,9 +75,12 @@ export default function SessionDetails() {
   useEffect(() => {
     if (!completed && id && userId) {
       const savedQuizState = localStorage.getItem(storageKey);
+
       if (savedQuizState) {
         const { startTime, durationInSeconds } = JSON.parse(savedQuizState);
+
         const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+
         const remaining = durationInSeconds - elapsedSeconds;
 
         if (remaining > 0) {
@@ -80,35 +94,41 @@ export default function SessionDetails() {
     }
   }, [id, userId, completed]);
 
-  // 🚀 التايمر المحسّن باستخدام الـ Refs لضمان العمل السليم عند انتهاء الوقت
+  // Timer
   useEffect(() => {
     let timer;
+
     if (started && !completed) {
       timer = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             clearInterval(timer);
-            // استخدام القيمة المحدثة مباشرة من الـ Ref لمنع ضياع الإجابات
+
             handleSubmit(answersRef.current);
+
             setError(
               "⏰ Time is up! Your answers were submitted automatically.",
             );
+
             return 0;
           }
+
           return prev - 1;
         });
       }, 1000);
     }
+
     return () => clearInterval(timer);
   }, [started, completed]);
 
-  // 🔥 Auto hide messages
+  // Auto hide messages
   useEffect(() => {
     if (error || successMsg) {
       const timer = setTimeout(() => {
         setError("");
         setSuccessMsg("");
       }, 3000);
+
       return () => clearTimeout(timer);
     }
   }, [error, successMsg]);
@@ -122,7 +142,10 @@ export default function SessionDetails() {
       "#8B5CF6",
       "#10B981",
     ];
-    const pieces = Array.from({ length: 80 }).map((_, i) => ({
+
+    const pieces = Array.from({
+      length: 80,
+    }).map((_, i) => ({
       id: i,
       left: `${Math.random() * 100}%`,
       delay: `${Math.random() * 3}s`,
@@ -130,6 +153,7 @@ export default function SessionDetails() {
       color: colors[Math.floor(Math.random() * colors.length)],
       duration: `${Math.random() * 2 + 2}s`,
     }));
+
     setConfetti(pieces);
 
     setTimeout(() => {
@@ -139,14 +163,17 @@ export default function SessionDetails() {
 
   const fetchSession = async () => {
     const snap = await getDoc(doc(db, "sessions", id));
+
     if (snap.exists()) {
       const data = snap.data();
+
       setSession(data);
 
       if (!localStorage.getItem(storageKey)) {
         const durationSec = data.quizDurationMinutes
           ? data.quizDurationMinutes * 60
           : 300;
+
         setTimeLeft(durationSec);
       }
     }
@@ -155,11 +182,14 @@ export default function SessionDetails() {
   const fetchSessionTasks = async () => {
     try {
       const q = query(collection(db, "tasks"), where("sessionId", "==", id));
+
       const querySnapshot = await getDocs(q);
+
       const tasksList = querySnapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
       }));
+
       setSessionTasks(tasksList);
     } catch (err) {
       console.error("Error fetching session tasks:", err);
@@ -173,22 +203,28 @@ export default function SessionDetails() {
 
     if (snap.exists()) {
       const data = snap.data();
+
       const sessionData = data?.[id];
 
       if (sessionData) {
         if (sessionData.completed !== undefined) {
           setCompleted(true);
+
           setScore(sessionData.score || 0);
+
           setAnswers(sessionData.answers || []);
+
           setIsPassed(sessionData.completed);
+
           localStorage.removeItem(storageKey);
         }
 
-        // Load existing feedback and rating if present
         if (sessionData.feedback) {
           setFeedback(sessionData.feedback);
+
           setIsFeedbackSubmitted(true);
         }
+
         if (sessionData.rating) {
           setRating(sessionData.rating);
         }
@@ -196,37 +232,47 @@ export default function SessionDetails() {
     }
   };
 
-  // Handle saving feedback and rating independently
   const handleSaveFeedback = async () => {
     if (!userId || rating === 0) {
       setError("Please select at least a star rating before submitting.");
+
       return;
     }
+
     setSubmittingFeedback(true);
+
     try {
       const ref = doc(db, "completedSessions", userId);
+
       const snap = await getDoc(ref);
+
       const oldData = snap.exists() ? snap.data() : {};
 
       await setDoc(
         ref,
         {
           ...oldData,
+
           [id]: {
             ...(oldData[id] || {}),
+
             feedback: feedback,
             rating: rating,
           },
         },
-        { merge: true },
+        {
+          merge: true,
+        },
       );
 
       setIsFeedbackSubmitted(true);
+
       setSuccessMsg(
         "⭐ Thank you! Your feedback has been submitted successfully.",
       );
     } catch (err) {
       console.error("Error saving feedback:", err);
+
       setError("Failed to submit feedback. Please try again.");
     } finally {
       setSubmittingFeedback(false);
@@ -235,7 +281,9 @@ export default function SessionDetails() {
 
   const getEmbedUrl = (url) => {
     if (!url) return "";
+
     let videoId = "";
+
     if (url.includes("youtu.be/")) {
       videoId = url.split("youtu.be/")[1]?.split("?")[0];
     } else if (url.includes("watch?v=")) {
@@ -243,6 +291,7 @@ export default function SessionDetails() {
     } else if (url.includes("embed/")) {
       videoId = url.split("embed/")[1]?.split("?")[0];
     }
+
     return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
   };
 
@@ -250,11 +299,16 @@ export default function SessionDetails() {
     const durationSec = session?.quizDurationMinutes
       ? session.quizDurationMinutes * 60
       : 300;
+
     const startTime = Date.now();
 
     localStorage.setItem(
       storageKey,
-      JSON.stringify({ startTime, durationInSeconds: durationSec }),
+
+      JSON.stringify({
+        startTime,
+        durationInSeconds: durationSec,
+      }),
     );
 
     setTimeLeft(durationSec);
@@ -262,10 +316,13 @@ export default function SessionDetails() {
   };
 
   const handleSubmit = async (currentAnswers = answersRef.current) => {
-    if (!session || !userId) return;
+    if (!session || !userId) {
+      return;
+    }
 
-    // منع التكرار لو تم الحفظ مسبقاً
-    if (completedRef.current) return;
+    if (completedRef.current) {
+      return;
+    }
 
     let finalScore = 0;
 
@@ -284,17 +341,25 @@ export default function SessionDetails() {
 
     try {
       const ref = doc(db, "completedSessions", userId);
+
       const snap = await getDoc(ref);
+
       const oldData = snap.exists() ? snap.data() : {};
 
       await setDoc(ref, {
         ...oldData,
+
         [id]: {
           ...(oldData[id] || {}),
+
           sessionId: id,
+
           score: finalScore,
+
           completed: passed,
+
           answers: currentAnswers,
+
           timestamp: Date.now(),
         },
       });
@@ -302,7 +367,6 @@ export default function SessionDetails() {
       console.error("Error saving quiz score:", err);
     }
 
-    // تحديث الحالة لتغيير واجهة المستخدم وإغلاق الامتحان فوراً
     setCompleted(true);
     setScore(finalScore);
     setIsPassed(passed);
@@ -317,434 +381,749 @@ export default function SessionDetails() {
 
   const handleCopyCode = (codeText) => {
     navigator.clipboard.writeText(codeText);
+
     setSuccessMsg("📋 Code copied to clipboard successfully!");
   };
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
+
     const secs = seconds % 60;
+
     return `${mins < 10 ? "0" : ""}${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
-  if (!session)
-    return <p className="text-white text-center mt-10">Loading...</p>;
+  if (!session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-11 w-11 animate-spin rounded-full border-2 border-white/10 border-t-indigo-500" />
+
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+            Loading Session
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen text-white p-6 bg-gradient-to-br from-slate-950 via-blue-950 to-black relative overflow-hidden">
+    <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-950 via-slate-950 to-indigo-950 px-4 py-6 text-white sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+      {/* ================= BACKGROUND ================= */}
+
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -right-32 top-10 h-96 w-96 rounded-full bg-indigo-500/[0.08] blur-3xl" />
+
+        <div className="absolute -left-32 top-[45%] h-96 w-96 rounded-full bg-violet-500/[0.04] blur-3xl" />
+
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[length:30px_30px]" />
+      </div>
+
+      {/* ================= CONFETTI ================= */}
+
       {confetti.map((piece) => (
         <div
           key={piece.id}
-          className="absolute top-[-20px] rounded-sm pointer-events-none animate-fall z-50"
+          className="pointer-events-none absolute top-[-20px] z-50 animate-fall rounded-sm"
           style={{
             left: piece.left,
+
             width: piece.size,
+
             height: piece.size,
+
             backgroundColor: piece.color,
+
             animationDelay: piece.delay,
+
             animationDuration: piece.duration,
+
             opacity: 0.8,
           }}
         />
       ))}
 
+      {/* ================= ALERTS ================= */}
+
       {error && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 animate-slideDown">
-          <div className="bg-red-500/90 backdrop-blur-xl text-white px-6 py-3 rounded-2xl shadow-lg border border-red-300/30">
+        <div className="fixed left-1/2 top-20 z-[100] w-[calc(100%-32px)] max-w-lg -translate-x-1/2 animate-slideDown md:top-5">
+          <div className="rounded-2xl border border-red-400/20 bg-red-500/90 px-4 py-3 text-center text-xs font-semibold text-white shadow-2xl shadow-red-950/30 backdrop-blur-xl sm:px-6 sm:text-sm">
             {error}
           </div>
         </div>
       )}
 
       {successMsg && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 animate-slideDown">
-          <div className="bg-emerald-500/90 backdrop-blur-xl text-white px-6 py-3 rounded-2xl shadow-lg border border-emerald-300/30">
+        <div className="fixed left-1/2 top-20 z-[100] w-[calc(100%-32px)] max-w-lg -translate-x-1/2 animate-slideDown md:top-5">
+          <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/90 px-4 py-3 text-center text-xs font-semibold text-white shadow-2xl shadow-emerald-950/30 backdrop-blur-xl sm:px-6 sm:text-sm">
             {successMsg}
           </div>
         </div>
       )}
 
-      <div className="max-w-3xl mx-auto bg-white/5 p-6 rounded-2xl mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border border-white/5">
-        <div>
-          <h1 className="text-2xl font-bold">{session.title}</h1>
-          <p className="text-gray-300 mt-1">{session.description}</p>
-        </div>
+      {/* ================= CONTENT ================= */}
 
-        {session.link && (
-          <a
-            href={session.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-blue-600 hover:bg-blue-500 transition-colors text-white font-medium px-5 py-2.5 rounded-xl text-sm flex items-center justify-center whitespace-nowrap shadow-lg shadow-blue-600/20"
-          >
-            Join Session 🚀
-          </a>
+      <main className="relative z-10 mx-auto w-full max-w-5xl space-y-5 sm:space-y-6">
+        {/* =====================================================
+            VIDEO - FIRST SECTION
+        ====================================================== */}
+
+        {session.youtubeLink && (
+          <section className="overflow-hidden rounded-[28px] border border-indigo-500/20 bg-slate-900/60 shadow-2xl shadow-black/25 backdrop-blur-xl">
+            <div className="flex flex-col gap-3 border-b border-white/[0.07] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-red-500/20 bg-red-500/10 text-red-400">
+                  <FaPlay size={13} />
+                </div>
+
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-indigo-400">
+                    Session Video
+                  </p>
+
+                  <h2 className="text-sm font-bold text-white sm:text-base">
+                    Recorded YouTube Session
+                  </h2>
+                </div>
+              </div>
+
+              <span className="w-fit rounded-full border border-red-500/15 bg-red-500/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-red-300">
+                Recorded
+              </span>
+            </div>
+
+            <div className="p-2.5 sm:p-4">
+              <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl">
+                <iframe
+                  src={getEmbedUrl(session.youtubeLink)}
+                  title={session.title}
+                  className="absolute inset-0 h-full w-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          </section>
         )}
-      </div>
 
-      {session.youtubeLink && (
-        <div className="max-w-3xl mx-auto bg-white/5 p-4 rounded-2xl mb-6 border border-white/5 flex flex-col gap-3">
-          <h2 className="text-sm font-semibold flex items-center gap-2">
-            <span></span> Recorded YouTube Session
-          </h2>
-          <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-2xl bg-black border border-white/10">
-            <iframe
-              src={getEmbedUrl(session.youtubeLink)}
-              title={session.title}
-              className="absolute top-0 left-0 w-full h-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
-          </div>
-        </div>
-      )}
+        {/* =====================================================
+            SESSION INFO
+        ====================================================== */}
 
-      {((session.sessionFile && session.sessionFile.url) ||
-        (session.sessionCode && session.sessionCode.body)) && (
-        <div className="max-w-3xl mx-auto bg-white/5 p-6 rounded-2xl mb-6 border border-white/5 flex flex-col gap-4">
-          <h2 className="text-lg font-bold text-indigo-400 border-b border-white/10 pb-2">
-            Session Resources
-          </h2>
+        <section className="relative overflow-hidden rounded-[28px] border border-white/[0.08] bg-slate-900/60 shadow-xl shadow-black/15 backdrop-blur-xl">
+          <div className="pointer-events-none absolute right-0 top-0 h-56 w-56 rounded-full bg-indigo-500/[0.07] blur-3xl" />
 
-          {session.sessionFile?.url && (
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-black/20 p-4 rounded-xl border border-white/5">
-              <div>
-                <p className="text-sm text-gray-400">Attached File:</p>
-                <h4 className="font-semibold text-white">
-                  {session.sessionFile.title || "Session Material"}
-                </h4>
-              </div>
-              <a
-                href={session.sessionFile.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-indigo-600 hover:bg-indigo-500 transition-colors text-white text-xs font-medium px-4 py-2 rounded-lg whitespace-nowrap"
-              >
-                Download File 📁
-              </a>
-            </div>
-          )}
+          <div className="relative grid gap-5 p-5 sm:p-6 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div className="min-w-0">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-indigo-400 shadow-[0_0_10px_rgba(129,140,248,0.7)]" />
 
-          {session.sessionCode?.body && (
-            <div className="flex flex-col gap-2 bg-black/40 rounded-xl border border-white/5 overflow-hidden">
-              <div className="bg-white/5 px-4 py-2.5 flex justify-between items-center border-b border-white/5">
-                <span className="text-xs font-mono text-gray-400">
-                  📄 {session.sessionCode.title || "Session Code"}
-                </span>
-                <button
-                  onClick={() => handleCopyCode(session.sessionCode.body)}
-                  className="text-xs bg-white/10 hover:bg-white/20 transition-colors px-3 py-1 rounded"
-                >
-                  Copy Code
-                </button>
-              </div>
-              <pre className="p-4 text-xs font-mono text-emerald-400 overflow-x-auto max-h-64 whitespace-pre">
-                {session.sessionCode.body}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
-
-      {sessionTasks.length > 0 && (
-        <div className="max-w-3xl mx-auto bg-white/5 p-6 rounded-2xl mb-6 border border-white/5 flex flex-col gap-4">
-          <h2 className="text-lg font-bold text-blue-400 border-b border-white/10 pb-2 flex items-center gap-2">
-            <FaTasks /> Required Tasks for This Session ({sessionTasks.length})
-          </h2>
-
-          <div className="space-y-3">
-            {sessionTasks.map((task) => (
-              <div
-                key={task.id}
-                className="p-4 rounded-2xl bg-black/30 border border-white/10 flex flex-col gap-2 transition-all hover:border-blue-500/30"
-              >
-                <div className="flex justify-between items-start gap-2">
-                  <h3 className="font-bold text-white text-base">
-                    {task.title}
-                  </h3>
-                  {task.points > 0 && (
-                    <span className="text-xs font-bold bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
-                      {task.points} pts
-                    </span>
-                  )}
-                </div>
-
-                <p className="text-sm text-gray-300 whitespace-pre-line leading-relaxed">
-                  {task.description}
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-400">
+                  Learning Session
                 </p>
-
-                <div className="flex flex-wrap items-center justify-between gap-2 mt-2 pt-2 border-t border-white/5 text-xs text-gray-400">
-                  {task.deadline && (
-                    <span className="flex items-center gap-1 text-rose-400 font-medium">
-                      <FaCalendarAlt /> Deadline: {task.deadline}
-                    </span>
-                  )}
-
-                  {task.formLink && (
-                    <a
-                      href={task.formLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-3 py-1.5 rounded-xl flex items-center gap-1 transition-colors ml-auto shadow-md shadow-indigo-600/20"
-                    >
-                      <FaLink className="text-[10px]" /> Submit Assignment
-                    </a>
-                  )}
-                </div>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {completed && (
-        <div
-          className={`max-w-3xl mx-auto mb-6 p-6 rounded-2xl border transition-all duration-700 transform scale-100 animate-popIn
-          ${
-            isPassed
-              ? "bg-gradient-to-r from-emerald-950/40 to-green-900/20 border-emerald-500/40 shadow-xl shadow-emerald-500/10"
-              : "bg-gradient-to-r from-rose-950/40 to-red-900/20 border-rose-500/40 shadow-xl shadow-rose-500/10"
-          }`}
-        >
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="text-center sm:text-left">
-              <h2
-                className={`text-2xl font-black tracking-wide ${isPassed ? "text-emerald-400" : "text-rose-400"}`}
-              >
-                {isPassed
-                  ? "🎉 Brilliant! Session Completed"
-                  : "👍 Quiz Finished! Keep Improving"}
-              </h2>
-              <p className="text-sm text-gray-400 mt-1">
-                {isPassed
-                  ? "Great job! You have fully grasped this session's concepts."
-                  : "You can review your incorrect answers and try again anytime."}
+              <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl lg:text-4xl">
+                {session.title}
+              </h1>
+
+              <p className="mt-3 max-w-3xl text-xs leading-relaxed text-slate-400 sm:text-sm sm:leading-6">
+                {session.description}
               </p>
             </div>
 
-            <div
-              className={`flex flex-col items-center justify-center p-4 rounded-2xl border min-w-[120px] backdrop-blur-sm
-              ${isPassed ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}
-            >
-              <span className="text-xs text-gray-400 uppercase font-bold tracking-wider">
-                Your Score
-              </span>
-              <span
-                className={`text-3xl font-black mt-1 ${isPassed ? "text-emerald-300" : "text-rose-300"}`}
+            {/* TELEGRAM RECORDING */}
+            {session.link && (
+              <a
+                href={session.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex w-full shrink-0 items-center justify-center gap-3 rounded-2xl border border-sky-400/20 bg-gradient-to-r from-sky-500 to-blue-600 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-sky-950/30 transition-all duration-200 hover:-translate-y-0.5 hover:from-sky-400 hover:to-blue-500 active:scale-[0.98] lg:w-auto"
               >
-                {score}{" "}
-                <span className="text-sm text-gray-500">
-                  / {session.quiz ? session.quiz.length : 0}
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15">
+                  <FaTelegramPlane
+                    size={15}
+                    className="transition-transform duration-200 group-hover:translate-x-0.5"
+                  />
                 </span>
+
+                <span className="text-left">
+                  <span className="block">Join Session</span>
+
+                  <span className="block text-[9px] font-semibold text-sky-100/80">
+                    Telegram Recording
+                  </span>
+                </span>
+              </a>
+            )}
+          </div>
+        </section>
+
+        {/* =====================================================
+            RESOURCES
+        ====================================================== */}
+
+        {((session.sessionFile && session.sessionFile.url) ||
+          (session.sessionCode && session.sessionCode.body)) && (
+          <section className="overflow-hidden rounded-[28px] border border-white/[0.08] bg-slate-900/55 shadow-xl shadow-black/15 backdrop-blur-xl">
+            <SectionHeader
+              title="Session Resources"
+              subtitle="Files and code related to this session"
+            />
+
+            <div className="space-y-3 p-4 pt-0 sm:p-5 sm:pt-0">
+              {/* FILE */}
+
+              {session.sessionFile?.url && (
+                <div className="flex flex-col gap-4 rounded-2xl border border-indigo-500/15 bg-indigo-500/[0.055] p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-indigo-400">
+                      Attached File
+                    </p>
+
+                    <h4 className="mt-1 truncate text-sm font-bold text-slate-100 sm:text-base">
+                      {session.sessionFile.title || "Session Material"}
+                    </h4>
+                  </div>
+
+                  <a
+                    href={session.sessionFile.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-indigo-400/20 bg-indigo-500 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-950/30 transition-all hover:bg-indigo-400"
+                  >
+                    <FaDownload size={10} />
+                    Download File
+                  </a>
+                </div>
+              )}
+
+              {/* CODE */}
+
+              {session.sessionCode?.body && (
+                <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-950/70">
+                  <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] bg-white/[0.025] px-4 py-3">
+                    <span className="min-w-0 truncate font-mono text-[10px] text-slate-400 sm:text-xs">
+                      📄 {session.sessionCode.title || "Session Code"}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopyCode(session.sessionCode.body)}
+                      className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.05] px-3 py-1.5 text-[10px] font-bold text-slate-300 transition hover:bg-white/10 hover:text-white"
+                    >
+                      <FaCopy size={9} />
+                      Copy
+                    </button>
+                  </div>
+
+                  <pre className="max-h-72 overflow-x-auto p-4 font-mono text-[11px] leading-5 text-emerald-400 sm:text-xs sm:leading-6">
+                    {session.sessionCode.body}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* =====================================================
+            TASKS
+        ====================================================== */}
+
+        {sessionTasks.length > 0 && (
+          <section className="overflow-hidden rounded-[28px] border border-white/[0.08] bg-slate-900/55 shadow-xl shadow-black/15 backdrop-blur-xl">
+            <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] p-4 sm:p-5">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-500/15 bg-blue-500/10 text-blue-400">
+                  <FaTasks size={14} />
+                </div>
+
+                <div className="min-w-0">
+                  <h2 className="text-sm font-bold text-white sm:text-base">
+                    Required Tasks
+                  </h2>
+
+                  <p className="mt-0.5 text-[10px] text-slate-500 sm:text-xs">
+                    Assignments for this session
+                  </p>
+                </div>
+              </div>
+
+              <span className="shrink-0 rounded-full border border-blue-500/15 bg-blue-500/10 px-2.5 py-1 text-[9px] font-bold text-blue-300">
+                {sessionTasks.length} Tasks
               </span>
+            </div>
+
+            <div className="space-y-3 p-4 sm:p-5">
+              {sessionTasks.map((task, index) => (
+                <div
+                  key={task.id}
+                  className="group rounded-2xl border border-white/[0.07] bg-slate-950/35 p-4 transition-all duration-200 hover:border-blue-500/20 hover:bg-slate-950/50 sm:p-5"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.04] text-[10px] font-black text-slate-500">
+                      {index + 1}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <h3 className="text-sm font-bold text-white sm:text-base">
+                          {task.title}
+                        </h3>
+
+                        {task.points > 0 && (
+                          <span className="w-fit shrink-0 rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[9px] font-bold text-blue-300">
+                            {task.points} pts
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-2 whitespace-pre-line text-xs leading-relaxed text-slate-400 sm:text-sm">
+                        {task.description}
+                      </p>
+
+                      {(task.deadline || task.formLink) && (
+                        <div className="mt-4 flex flex-col gap-3 border-t border-white/[0.06] pt-3 sm:flex-row sm:items-center sm:justify-between">
+                          {task.deadline && (
+                            <span className="flex items-center gap-1.5 text-[10px] font-semibold text-rose-400 sm:text-xs">
+                              <FaCalendarAlt />
+                              Deadline: {task.deadline}
+                            </span>
+                          )}
+
+                          {task.formLink && (
+                            <a
+                              href={task.formLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-400/20 bg-indigo-500 px-4 py-2.5 text-[10px] font-bold text-white shadow-lg shadow-indigo-950/25 transition hover:bg-indigo-400 sm:ml-auto sm:w-auto sm:text-xs"
+                            >
+                              <FaLink size={9} />
+                              Submit Assignment
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* =====================================================
+            QUIZ RESULT
+        ====================================================== */}
+
+        {completed && (
+          <section
+            className={`overflow-hidden rounded-[28px] border shadow-xl backdrop-blur-xl ${
+              isPassed
+                ? "border-emerald-500/25 bg-gradient-to-br from-emerald-950/50 to-slate-900/60 shadow-emerald-950/10"
+                : "border-rose-500/25 bg-gradient-to-br from-rose-950/50 to-slate-900/60 shadow-rose-950/10"
+            }`}
+          >
+            <div className="grid gap-5 p-5 sm:p-6 md:grid-cols-[1fr_auto] md:items-center">
+              <div>
+                <div
+                  className={`mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border ${
+                    isPassed
+                      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                      : "border-rose-500/20 bg-rose-500/10 text-rose-400"
+                  }`}
+                >
+                  <FaCheckCircle />
+                </div>
+
+                <h2
+                  className={`text-xl font-black tracking-tight sm:text-2xl ${
+                    isPassed ? "text-emerald-300" : "text-rose-300"
+                  }`}
+                >
+                  {isPassed
+                    ? "🎉 Brilliant! Session Completed"
+                    : "👍 Quiz Finished! Keep Improving"}
+                </h2>
+
+                <p className="mt-2 max-w-xl text-xs leading-relaxed text-slate-400 sm:text-sm">
+                  {isPassed
+                    ? "Great job! You have fully grasped this session's concepts."
+                    : "You can review your incorrect answers and try again anytime."}
+                </p>
+              </div>
+
+              <div
+                className={`flex min-w-32 flex-col items-center justify-center rounded-2xl border p-4 ${
+                  isPassed
+                    ? "border-emerald-500/20 bg-emerald-500/[0.07]"
+                    : "border-rose-500/20 bg-rose-500/[0.07]"
+                }`}
+              >
+                <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                  Your Score
+                </span>
+
+                <span
+                  className={`mt-1 text-3xl font-black ${
+                    isPassed ? "text-emerald-300" : "text-rose-300"
+                  }`}
+                >
+                  {score}
+
+                  <span className="ml-1 text-xs text-slate-500">
+                    / {session.quiz ? session.quiz.length : 0}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-end border-t border-white/[0.06] px-5 py-4 sm:px-6">
+              <button
+                type="button"
+                onClick={() => setShowReview(!showReview)}
+                className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-[10px] font-bold text-slate-300 transition hover:bg-white/[0.08] hover:text-white sm:text-xs"
+              >
+                {showReview ? "Hide Quiz Review" : "Show Quiz Review"}
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* =====================================================
+            QUIZ REVIEW
+        ====================================================== */}
+
+        {completed && showReview && session.quiz && (
+          <section className="animate-fadeIn overflow-hidden rounded-[28px] border border-white/[0.08] bg-slate-900/55 shadow-xl shadow-black/15 backdrop-blur-xl">
+            <SectionHeader
+              title="Detailed Quiz Review"
+              subtitle="Review your answers and the correct solutions"
+            />
+
+            <div className="space-y-4 p-4 pt-0 sm:p-5 sm:pt-0">
+              {session.quiz.map((q, i) => {
+                const studentChoice = answers[i];
+
+                const isCorrect = studentChoice === q.correct;
+
+                return (
+                  <div
+                    key={i}
+                    className={`rounded-2xl border p-4 sm:p-5 ${
+                      isCorrect
+                        ? "border-emerald-500/20 bg-emerald-500/[0.04]"
+                        : "border-rose-500/20 bg-rose-500/[0.04]"
+                    }`}
+                  >
+                    <div className="mb-4 flex items-start gap-3">
+                      <span
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-black ${
+                          isCorrect
+                            ? "bg-emerald-500/15 text-emerald-300"
+                            : "bg-rose-500/15 text-rose-300"
+                        }`}
+                      >
+                        {i + 1}
+                      </span>
+
+                      <h4 className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-slate-200 sm:text-sm">
+                        {q.question}
+                      </h4>
+                    </div>
+
+                    <div className="space-y-2">
+                      {q.options.map((opt, j) => {
+                        let optionStyle =
+                          "border-white/[0.05] bg-slate-950/30 text-slate-400";
+
+                        let badge = null;
+
+                        if (j === q.correct) {
+                          optionStyle =
+                            "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 font-semibold";
+
+                          badge = (
+                            <span className="shrink-0 rounded-md bg-emerald-500/15 px-2 py-1 text-[8px] font-bold text-emerald-300 sm:text-[9px]">
+                              Correct Answer
+                            </span>
+                          );
+                        } else if (j === studentChoice && !isCorrect) {
+                          optionStyle =
+                            "border-rose-500/30 bg-rose-500/10 text-rose-300 font-semibold";
+
+                          badge = (
+                            <span className="shrink-0 rounded-md bg-rose-500/15 px-2 py-1 text-[8px] font-bold text-rose-300 sm:text-[9px]">
+                              Your Choice
+                            </span>
+                          );
+                        } else if (j === studentChoice && isCorrect) {
+                          badge = (
+                            <span className="shrink-0 rounded-md bg-emerald-500/15 px-2 py-1 text-[8px] font-bold text-emerald-300 sm:text-[9px]">
+                              Your Choice
+                            </span>
+                          );
+                        }
+
+                        return (
+                          <div
+                            key={j}
+                            className={`flex items-center justify-between gap-3 rounded-xl border p-3 text-xs sm:text-sm ${optionStyle}`}
+                          >
+                            <span className="min-w-0">{opt}</span>
+
+                            {badge}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* =====================================================
+            FEEDBACK
+        ====================================================== */}
+
+        <section className="overflow-hidden rounded-[28px] border border-white/[0.08] bg-slate-900/55 shadow-xl shadow-black/15 backdrop-blur-xl">
+          <div className="flex items-center gap-3 border-b border-white/[0.07] p-4 sm:p-5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-yellow-500/15 bg-yellow-500/10 text-yellow-400">
+              <FaStar size={14} />
+            </div>
+
+            <div>
+              <h3 className="text-sm font-bold text-white sm:text-base">
+                Rate & Review this Session
+              </h3>
+
+              <p className="mt-0.5 text-[10px] text-slate-500 sm:text-xs">
+                Help us improve future sessions.
+              </p>
             </div>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-white/5 flex justify-end">
-            <button
-              onClick={() => setShowReview(!showReview)}
-              className="bg-white/5 hover:bg-white/10 text-white font-medium px-4 py-2 rounded-xl text-xs transition-colors border border-white/5"
-            >
-              {showReview ? "Hide Quiz Review" : "Show Quiz Review"}
-            </button>
+          <div className="p-4 sm:p-5">
+            <p className="text-xs leading-relaxed text-slate-400 sm:text-sm">
+              Share your thoughts or rate this session to help us improve!
+            </p>
+
+            {/* STARS */}
+
+            <div className="mt-4 flex w-fit items-center gap-1.5 rounded-xl border border-white/[0.06] bg-slate-950/40 px-3 py-2.5">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  type="button"
+                  key={star}
+                  disabled={isFeedbackSubmitted}
+                  onClick={() => !isFeedbackSubmitted && setRating(star)}
+                  className={`rounded-lg p-1 transition-transform focus:outline-none ${
+                    isFeedbackSubmitted
+                      ? "cursor-default"
+                      : "cursor-pointer hover:scale-110 active:scale-95"
+                  }`}
+                >
+                  <FaStar
+                    size={20}
+                    className={
+                      rating >= star
+                        ? "text-yellow-400"
+                        : "text-slate-700 transition-colors hover:text-slate-500"
+                    }
+                  />
+                </button>
+              ))}
+            </div>
+
+            {/* TEXTAREA */}
+
+            <textarea
+              value={feedback}
+              disabled={isFeedbackSubmitted}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="Write your feedback about this session..."
+              className={`mt-4 h-28 w-full resize-none rounded-2xl border border-white/[0.08] bg-slate-950/50 p-4 text-xs leading-relaxed text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-500/40 focus:ring-2 focus:ring-indigo-500/10 sm:text-sm ${
+                isFeedbackSubmitted ? "cursor-not-allowed opacity-60" : ""
+              }`}
+            />
+
+            {!isFeedbackSubmitted && (
+              <div className="mt-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveFeedback}
+                  disabled={submittingFeedback}
+                  className="w-full rounded-xl border border-indigo-400/20 bg-indigo-500 px-5 py-3 text-xs font-bold text-white shadow-lg shadow-indigo-950/25 transition-all hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                >
+                  {submittingFeedback ? "Submitting..." : "Submit Feedback"}
+                </button>
+              </div>
+            )}
+
+            {isFeedbackSubmitted && (
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-500/15 bg-emerald-500/[0.055] px-3 py-2.5 text-[10px] font-semibold text-emerald-300 sm:text-xs">
+                <FaCheckCircle />
+                Feedback submitted successfully and locked.
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        </section>
 
-      {completed && showReview && session.quiz && (
-        <div className="max-w-3xl mx-auto space-y-4 mb-6 animate-fadeIn">
-          <h3 className="text-xl font-bold text-indigo-300 mb-4">
-            🔍 Detailed Quiz Review
-          </h3>
-          {session.quiz.map((q, i) => {
-            const studentChoice = answers[i];
-            const isCorrect = studentChoice === q.correct;
+        {/* =====================================================
+            START QUIZ
+        ====================================================== */}
 
-            return (
+        {!completed && !started && session.quiz && session.quiz.length > 0 && (
+          <section className="relative overflow-hidden rounded-[28px] border border-indigo-500/20 bg-gradient-to-br from-indigo-500/[0.08] to-slate-900/60 p-5 text-center shadow-xl shadow-black/15 backdrop-blur-xl sm:p-7">
+            <div className="pointer-events-none absolute left-1/2 top-0 h-48 w-48 -translate-x-1/2 rounded-full bg-indigo-500/10 blur-3xl" />
+
+            <div className="relative">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-300">
+                <FaStar />
+              </div>
+
+              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-indigo-400">
+                Knowledge Check
+              </p>
+
+              <h3 className="mt-1 text-lg font-black text-white sm:text-xl">
+                Session Knowledge Quiz
+              </h3>
+
+              <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-slate-400 sm:text-sm">
+                Test your understanding of what you learned in this session.
+              </p>
+
+              <button
+                type="button"
+                onClick={startQuiz}
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-400/20 bg-indigo-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-950/30 transition-all hover:-translate-y-0.5 hover:bg-indigo-400 active:scale-[0.98] sm:w-auto"
+              >
+                <FaPlay size={11} />
+                Start Quiz
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* =====================================================
+            ACTIVE QUIZ
+        ====================================================== */}
+
+        {!completed && started && session.quiz && (
+          <section className="space-y-4">
+            {/* TIMER */}
+
+            <div className="sticky top-20 z-40 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-900/90 p-3.5 shadow-2xl shadow-black/30 backdrop-blur-xl md:top-4 sm:p-4">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-50" />
+
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                </span>
+
+                <span className="truncate text-[10px] font-bold text-slate-300 sm:text-sm">
+                  Quiz in Progress...
+                </span>
+              </div>
+
               <div
-                key={i}
-                className={`p-5 rounded-xl border ${
-                  isCorrect
-                    ? "bg-emerald-950/20 border-emerald-500/30"
-                    : "bg-rose-950/20 border-rose-500/30"
+                className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 font-mono text-sm font-black sm:px-4 sm:text-lg ${
+                  timeLeft < 60
+                    ? "animate-pulse border-rose-500/30 bg-rose-500/10 text-rose-400"
+                    : "border-indigo-500/20 bg-indigo-500/10 text-indigo-300"
                 }`}
               >
-                <h4 className="font-mono text-sm text-gray-200 mb-3 bg-black/30 p-3 rounded-lg border border-white/5">
-                  {i + 1}. {q.question}
-                </h4>
+                <FaClock size={13} />
+
+                <span>{formatTime(timeLeft)}</span>
+              </div>
+            </div>
+
+            {/* QUESTIONS */}
+
+            {session.quiz.map((q, i) => (
+              <div
+                key={i}
+                className="animate-fadeIn rounded-[24px] border border-white/[0.08] bg-slate-900/55 p-4 shadow-lg shadow-black/10 backdrop-blur-xl sm:p-5"
+              >
+                <div className="mb-4 flex items-start gap-3">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-indigo-500/15 bg-indigo-500/10 text-[10px] font-black text-indigo-300">
+                    {i + 1}
+                  </span>
+
+                  <h3 className="whitespace-pre-wrap font-mono text-xs font-semibold leading-relaxed text-slate-200 sm:text-sm sm:leading-6">
+                    {q.question}
+                  </h3>
+                </div>
 
                 <div className="space-y-2">
                   {q.options.map((opt, j) => {
-                    let optionStyle =
-                      "bg-black/10 text-gray-300 border-transparent";
-                    let badge = null;
-
-                    if (j === q.correct) {
-                      optionStyle =
-                        "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold";
-                      badge = (
-                        <span className="float-right text-xs bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded">
-                          Correct Answer
-                        </span>
-                      );
-                    } else if (j === studentChoice && !isCorrect) {
-                      optionStyle =
-                        "bg-rose-500/20 text-rose-300 border-rose-500/40 font-bold";
-                      badge = (
-                        <span className="float-right text-xs bg-rose-500/30 text-rose-200 px-2 py-0.5 rounded">
-                          Your Choice
-                        </span>
-                      );
-                    } else if (j === studentChoice && isCorrect) {
-                      badge = (
-                        <span className="float-right text-xs bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded">
-                          Your Choice (Correct)
-                        </span>
-                      );
-                    }
+                    const selected = answers[i] === j;
 
                     return (
-                      <div
+                      <label
                         key={j}
-                        className={`p-2.5 rounded-lg text-sm border ${optionStyle}`}
+                        className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-xs transition-all duration-200 sm:text-sm ${
+                          selected
+                            ? "border-indigo-500/30 bg-indigo-500/10 text-indigo-100"
+                            : "border-white/[0.06] bg-slate-950/30 text-slate-400 hover:border-white/15 hover:bg-white/[0.035] hover:text-slate-200"
+                        }`}
                       >
-                        <span>{opt}</span>
-                        {badge}
-                      </div>
+                        <input
+                          type="radio"
+                          name={`q${i}`}
+                          checked={selected}
+                          className="h-4 w-4 shrink-0 accent-indigo-500"
+                          onChange={() => {
+                            const copy = [...answers];
+
+                            copy[i] = j;
+
+                            setAnswers(copy);
+                          }}
+                        />
+
+                        <span className="leading-relaxed">{opt}</span>
+                      </label>
                     );
                   })}
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+            ))}
 
-      {/* 🌟 INDEPENDENT SESSION FEEDBACK & RATING SECTION */}
-      <div className="max-w-3xl mx-auto bg-white/5 p-6 rounded-2xl mb-6 border border-white/5 flex flex-col gap-3">
-        <h3 className="text-lg font-bold text-yellow-400 border-b border-white/10 pb-2 flex items-center gap-2">
-          <FaStar /> Rate & Review this Session
-        </h3>
-        <p className="text-sm text-gray-300">
-          Share your thoughts or rate this session to help us improve!
+            {/* SUBMIT */}
+
+            <div className="pb-4 pt-2 text-center">
+              <button
+                type="button"
+                onClick={() => handleSubmit(answers)}
+                className="w-full rounded-2xl border border-emerald-400/20 bg-emerald-500 px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-950/30 transition-all hover:-translate-y-0.5 hover:bg-emerald-400 active:scale-[0.98] sm:w-auto"
+              >
+                Submit Quiz Answers
+              </button>
+            </div>
+          </section>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function SectionHeader({ title, subtitle }) {
+  return (
+    <div className="flex items-center gap-3 border-b border-white/[0.07] p-4 sm:p-5">
+      <div className="h-8 w-1 shrink-0 rounded-full bg-indigo-500" />
+
+      <div className="min-w-0">
+        <h2 className="text-sm font-bold text-white sm:text-base">{title}</h2>
+
+        <p className="mt-0.5 text-[10px] text-slate-500 sm:text-xs">
+          {subtitle}
         </p>
-
-        <div className="flex gap-1 mt-1">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button
-              type="button"
-              key={star}
-              disabled={isFeedbackSubmitted}
-              onClick={() => !isFeedbackSubmitted && setRating(star)}
-              className={`focus:outline-none ${isFeedbackSubmitted ? "cursor-default" : "cursor-pointer"}`}
-            >
-              <FaStar
-                size={22}
-                className={
-                  rating >= star
-                    ? "text-yellow-400"
-                    : "text-gray-600 hover:text-gray-400"
-                }
-              />
-            </button>
-          ))}
-        </div>
-
-        <textarea
-          value={feedback}
-          disabled={isFeedbackSubmitted}
-          onChange={(e) => setFeedback(e.target.value)}
-          placeholder="Write your feedback about this session..."
-          className={`w-full bg-black/30 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-blue-500 resize-none h-24 ${isFeedbackSubmitted ? "opacity-75 cursor-not-allowed" : ""}`}
-        />
-
-        {!isFeedbackSubmitted && (
-          <button
-            onClick={handleSaveFeedback}
-            disabled={submittingFeedback}
-            className="self-end bg-blue-600 hover:bg-blue-500 text-white font-medium px-5 py-2.5 rounded-xl text-xs transition-colors shadow-lg shadow-blue-600/20"
-          >
-            {submittingFeedback ? "Submitting..." : "Submit Feedback"}
-          </button>
-        )}
-
-        {isFeedbackSubmitted && (
-          <p className="text-xs text-emerald-400 font-medium flex items-center gap-1 mt-1">
-            ✓ Feedback submitted successfully and locked.
-          </p>
-        )}
       </div>
-
-      {!completed && !started && session.quiz && session.quiz.length > 0 && (
-        <div className="max-w-3xl mx-auto bg-white/5 p-6 rounded-2xl mb-6 text-center border border-white/5">
-          <h3 className="text-lg font-bold mb-2">Session Knowledge Quiz</h3>
-          <p className="text-sm text-gray-300 mb-4">
-            Test your understanding of what you learned in this session.
-          </p>
-          <button
-            onClick={startQuiz}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-lg shadow-blue-600/20"
-          >
-            Start Quiz 🎯
-          </button>
-        </div>
-      )}
-
-      {!completed && started && session.quiz && (
-        <div className="max-w-3xl mx-auto space-y-4">
-          <div className="sticky top-4 z-40 bg-slate-900/90 backdrop-blur-md p-4 rounded-2xl border border-white/10 flex justify-between items-center shadow-xl">
-            <div className="flex items-center gap-2 text-sm font-bold text-gray-300">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-              Quiz in Progress...
-            </div>
-            <div
-              className={`flex items-center gap-2 font-mono text-lg font-bold px-4 py-1.5 rounded-xl border ${timeLeft < 60 ? "bg-rose-500/20 text-rose-400 border-rose-500/30 animate-pulse" : "bg-blue-500/20 text-blue-300 border-blue-500/30"}`}
-            >
-              <FaClock />
-              <span>{formatTime(timeLeft)}</span>
-            </div>
-          </div>
-
-          {session.quiz.map((q, i) => (
-            <div
-              key={i}
-              className="p-4 bg-white/5 rounded-xl border border-white/5 animate-fadeIn"
-            >
-              <h3 className="font-semibold text-gray-200 text-sm md:text-base leading-relaxed whitespace-pre-wrap font-mono bg-black/10 p-3 rounded-xl border border-white/5 mb-3">
-                {i + 1}. {q.question}
-              </h3>
-
-              {q.options.map((opt, j) => (
-                <label
-                  key={j}
-                  className="block mt-2 cursor-pointer p-2.5 rounded-lg bg-black/10 hover:bg-white/5 transition-colors border border-transparent hover:border-white/5"
-                >
-                  <input
-                    type="radio"
-                    name={`q${i}`}
-                    checked={answers[i] === j}
-                    className="accent-blue-500"
-                    onChange={() => {
-                      const copy = [...answers];
-                      copy[i] = j;
-                      setAnswers(copy);
-                    }}
-                  />{" "}
-                  <span className="ml-2 text-gray-300 text-sm">{opt}</span>
-                </label>
-              ))}
-            </div>
-          ))}
-
-          <div className="text-center pt-4">
-            <button
-              onClick={() => handleSubmit(answers)}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 py-3 rounded-xl transition-all shadow-lg shadow-emerald-600/25"
-            >
-              Submit Quiz Answers
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
